@@ -25,3 +25,6 @@ env/
 .DS_Store
 _log.txt
 _l.txt
+
+# Documentos generados (no versionar)
+Requerimiento_Integracion_Murdoch.pdf
