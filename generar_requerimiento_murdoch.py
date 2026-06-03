@@ -90,25 +90,51 @@ def tabla(data, anchos, encabezado=True):
 # =========================================================================== #
 #  PORTADA                                                                     #
 # =========================================================================== #
-S.append(Spacer(1, 4 * cm))
-S.append(Paragraph("pecepe.", ParagraphStyle("logo", textColor=AZUL, fontSize=46,
-                                              alignment=TA_CENTER, fontName="Helvetica-Bold")))
-SP(0.6)
-S.append(Paragraph("Requerimiento de Integración y Desarrollo", styles["Tit"]))
+estilo_logo = ParagraphStyle("logo", textColor=AZUL, fontSize=44, leading=50,
+                             alignment=TA_CENTER, fontName="Helvetica-Bold")
+estilo_tit_portada = ParagraphStyle("TitPortada", parent=styles["Title"],
+                                    textColor=AZUL_OSC, fontSize=23, leading=29,
+                                    spaceAfter=4, alignment=TA_CENTER)
+
+S.append(Spacer(1, 3.2 * cm))
+S.append(Paragraph("pecepe.", estilo_logo))
+SP(1.0)
+S.append(HRFlowable(width="45%", thickness=1.2, color=AZUL, hAlign="CENTER"))
+SP(0.7)
+S.append(Paragraph("Requerimiento de Integración y Desarrollo", estilo_tit_portada))
 S.append(Paragraph(
     "Automatización del Tareo de Operaciones e integración vía API con el "
     "sistema de marcación <b>Murdoch Sistemas</b>", styles["Sub"]))
-SP(1.0)
-S.append(HRFlowable(width="60%", thickness=1.2, color=AZUL, hAlign="CENTER"))
-SP(0.6)
-tabla([
+SP(1.6)
+
+# Ficha de datos del documento (recuadro centrado y con etiquetas resaltadas)
+ficha = [
     ["Documento", "Especificación de requerimiento para cotización (RFP)"],
     ["Dirigido a", "Murdoch Sistemas (proveedor del sistema de marcación)"],
     ["Solicitado por", "Gerencia de Operaciones — PECEPE"],
     ["Plataformas objetivo", "PC, tablet y celular (web responsiva)"],
     ["Fecha", date.today().strftime("%d/%m/%Y")],
     ["Versión", "1.0"],
-], anchos=[4.5, 11.5], encabezado=False)
+]
+filas_ficha = [[Paragraph(f"<b>{a}</b>", styles["Cell"]),
+                Paragraph(b, styles["Cell"])] for a, b in ficha]
+t_ficha = Table(filas_ficha, colWidths=[4.8 * cm, 9.2 * cm], hAlign="CENTER")
+t_ficha.setStyle(TableStyle([
+    ("BACKGROUND", (0, 0), (0, -1), GRIS_CLARO),
+    ("TEXTCOLOR", (0, 0), (0, -1), AZUL_OSC),
+    ("LINEBELOW", (0, 0), (-1, -1), 0.4, colors.HexColor("#D7DEE9")),
+    ("BOX", (0, 0), (-1, -1), 0.6, AZUL),
+    ("LINEAFTER", (0, 0), (0, -1), 0.6, AZUL),
+    ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
+    ("LEFTPADDING", (0, 0), (-1, -1), 8),
+    ("RIGHTPADDING", (0, 0), (-1, -1), 8),
+    ("TOPPADDING", (0, 0), (-1, -1), 6),
+    ("BOTTOMPADDING", (0, 0), (-1, -1), 6),
+]))
+S.append(t_ficha)
+SP(1.2)
+S.append(Paragraph("Documento confidencial — uso interno y para el proveedor",
+                   ParagraphStyle("conf", parent=styles["Foot"], fontSize=8.5)))
 S.append(PageBreak())
 
 # =========================================================================== #
