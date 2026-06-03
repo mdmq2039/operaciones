@@ -12,11 +12,11 @@
 - [ ] 9. Push a GitHub (repo conectado a Render) — pendiente de URL y autenticación
 
 ## Plan: Dashboard + WhatsApp
-- [ ] 10. Crear `dashboard_charts.py`: gráficos Plotly + helpers WhatsApp
-- [ ] 11. Agregar `plotly>=5.0` a `requirements.txt`
-- [ ] 12. Agregar pestaña `📊 Dashboard` en `app.py` (con filtros)
-- [ ] 13. Agregar pestaña `📱 Compartir` en `app.py` (WhatsApp wa.me links)
-- [ ] 14. Commit y push al branch de desarrollo
+- [x] 10. Crear `dashboard_charts.py`: gráficos Plotly + helpers WhatsApp
+- [x] 11. Agregar `plotly>=5.0` a `requirements.txt`
+- [x] 12. Agregar pestaña `📊 Dashboard` en `app.py` (con filtros)
+- [x] 13. Agregar pestaña `📱 Compartir` en `app.py` (WhatsApp wa.me links)
+- [x] 14. Merge a `main` y push para despliegue en Render
 
 ## Revisión
 
