@@ -1,0 +1,1072 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Infografía — Aplicativo de Tareo de Operaciones PECEPE</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;600&display=swap');
+
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --azul:      #1F4E9B;
+    --azul-cl:   #3B82F6;
+    --azul-bg:   #EFF6FF;
+    --verde:     #059669;
+    --verde-bg:  #ECFDF5;
+    --ambar:     #D97706;
+    --ambar-bg:  #FFFBEB;
+    --rojo:      #DC2626;
+    --rojo-bg:   #FEF2F2;
+    --morado:    #7C3AED;
+    --morado-bg: #F5F3FF;
+    --gris:      #374151;
+    --gris-cl:   #6B7280;
+    --gris-bg:   #F9FAFB;
+    --borde:     #E5E7EB;
+    --blanco:    #FFFFFF;
+    --sombra:    0 1px 3px rgba(0,0,0,.08), 0 4px 16px rgba(0,0,0,.06);
+    --sombra-lg: 0 4px 6px rgba(0,0,0,.05), 0 10px 40px rgba(0,0,0,.10);
+  }
+
+  body {
+    font-family: 'Inter', system-ui, sans-serif;
+    background: #F1F5F9;
+    color: var(--gris);
+    line-height: 1.6;
+    padding: 0;
+  }
+
+  /* ── PORTADA ──────────────────────────────────────────────── */
+  .portada {
+    background: linear-gradient(135deg, #0F2A6B 0%, #1F4E9B 45%, #2563EB 100%);
+    color: #fff;
+    padding: 64px 48px 56px;
+    position: relative;
+    overflow: hidden;
+  }
+  .portada::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background:
+      radial-gradient(ellipse 60% 80% at 85% 20%, rgba(99,179,237,.18) 0%, transparent 60%),
+      radial-gradient(ellipse 50% 60% at 10% 80%, rgba(147,197,253,.12) 0%, transparent 50%);
+  }
+  .portada-inner { position: relative; max-width: 1100px; margin: 0 auto; }
+  .portada-logo {
+    font-size: 3.2rem; font-weight: 900; letter-spacing: -1px;
+    color: #fff; margin-bottom: 8px;
+  }
+  .portada-logo span { color: #93C5FD; }
+  .portada-titulo {
+    font-size: 2rem; font-weight: 700; margin-bottom: 10px; line-height: 1.2;
+  }
+  .portada-sub {
+    font-size: 1.05rem; opacity: .82; max-width: 620px; margin-bottom: 32px;
+  }
+  .portada-badges { display: flex; flex-wrap: wrap; gap: 10px; }
+  .badge {
+    display: inline-flex; align-items: center; gap: 6px;
+    padding: 5px 14px; border-radius: 100px; font-size: .78rem;
+    font-weight: 600; letter-spacing: .3px;
+  }
+  .badge-blanco { background: rgba(255,255,255,.15); color: #fff; border: 1px solid rgba(255,255,255,.25); }
+  .badge-azul   { background: var(--azul-bg); color: var(--azul); }
+  .badge-verde  { background: var(--verde-bg); color: var(--verde); }
+  .badge-ambar  { background: var(--ambar-bg); color: var(--ambar); }
+  .badge-morado { background: var(--morado-bg); color: var(--morado); }
+  .badge-rojo   { background: var(--rojo-bg); color: var(--rojo); }
+  .badge-gris   { background: var(--gris-bg); color: var(--gris); border: 1px solid var(--borde); }
+
+  /* ── CONTENEDOR GENERAL ────────────────────────────────────── */
+  .page { max-width: 1100px; margin: 0 auto; padding: 40px 24px 64px; }
+
+  /* ── SECCIONES ─────────────────────────────────────────────── */
+  .seccion-titulo {
+    display: flex; align-items: center; gap: 12px;
+    font-size: 1.2rem; font-weight: 800; color: var(--azul);
+    margin: 44px 0 20px;
+    padding-bottom: 10px;
+    border-bottom: 2px solid var(--azul-bg);
+  }
+  .seccion-icono {
+    width: 36px; height: 36px; border-radius: 10px;
+    background: var(--azul); color: #fff;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 1rem; flex-shrink: 0;
+  }
+
+  /* ── TARJETAS ──────────────────────────────────────────────── */
+  .card {
+    background: var(--blanco);
+    border: 1px solid var(--borde);
+    border-radius: 16px;
+    padding: 24px;
+    box-shadow: var(--sombra);
+  }
+  .card-titulo {
+    font-size: .75rem; font-weight: 700; text-transform: uppercase;
+    letter-spacing: .8px; color: var(--gris-cl); margin-bottom: 12px;
+  }
+
+  /* ── GRIDS ─────────────────────────────────────────────────── */
+  .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+  .grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 16px; }
+  .grid-4 { display: grid; grid-template-columns: repeat(4,1fr); gap: 14px; }
+  @media(max-width:780px){
+    .grid-2,.grid-3,.grid-4{ grid-template-columns:1fr; }
+  }
+
+  /* ── KPI BOX ───────────────────────────────────────────────── */
+  .kpi { text-align: center; padding: 20px 12px; }
+  .kpi-num {
+    font-size: 2.2rem; font-weight: 900; line-height: 1;
+    margin-bottom: 4px;
+  }
+  .kpi-label { font-size: .78rem; color: var(--gris-cl); font-weight: 500; }
+
+  /* ── FLUJO ─────────────────────────────────────────────────── */
+  .flujo {
+    display: flex; align-items: stretch; gap: 0;
+    overflow-x: auto; padding-bottom: 4px;
+  }
+  .flujo-paso {
+    flex: 1; min-width: 130px;
+    background: var(--blanco);
+    border: 1px solid var(--borde);
+    border-radius: 12px;
+    padding: 18px 14px;
+    text-align: center;
+    position: relative;
+    box-shadow: var(--sombra);
+  }
+  .flujo-paso + .flujo-paso { margin-left: 28px; }
+  .flujo-paso + .flujo-paso::before {
+    content: '→';
+    position: absolute; left: -22px; top: 50%;
+    transform: translateY(-50%);
+    font-size: 1.3rem; color: var(--azul-cl); font-weight: 700;
+  }
+  .flujo-num {
+    width: 28px; height: 28px; border-radius: 50%;
+    background: var(--azul); color: #fff;
+    font-size: .78rem; font-weight: 800;
+    display: flex; align-items: center; justify-content: center;
+    margin: 0 auto 8px;
+  }
+  .flujo-titulo { font-size: .85rem; font-weight: 700; margin-bottom: 4px; color: var(--azul); }
+  .flujo-sub { font-size: .73rem; color: var(--gris-cl); line-height: 1.4; }
+
+  /* ── TABS ──────────────────────────────────────────────────── */
+  .tab-grid { display: grid; grid-template-columns: repeat(3,1fr); gap: 12px; }
+  @media(max-width:600px){ .tab-grid{ grid-template-columns:1fr 1fr; } }
+  .tab-card {
+    background: var(--blanco); border: 1px solid var(--borde);
+    border-radius: 14px; padding: 18px 16px;
+    box-shadow: var(--sombra); position: relative; overflow: hidden;
+  }
+  .tab-card::before {
+    content: ''; position: absolute; top: 0; left: 0; right: 0; height: 4px;
+  }
+  .tab-azul::before   { background: var(--azul); }
+  .tab-verde::before  { background: var(--verde); }
+  .tab-ambar::before  { background: var(--ambar); }
+  .tab-morado::before { background: var(--morado); }
+  .tab-rojo::before   { background: var(--rojo); }
+  .tab-teal::before   { background: #0891B2; }
+  .tab-icono { font-size: 1.6rem; margin-bottom: 8px; display: block; }
+  .tab-nombre { font-size: .88rem; font-weight: 700; margin-bottom: 6px; }
+  .tab-desc { font-size: .74rem; color: var(--gris-cl); line-height: 1.5; }
+  .tab-quien {
+    display: inline-flex; align-items: center; gap: 4px;
+    margin-top: 10px; padding: 3px 9px;
+    border-radius: 100px; font-size: .68rem; font-weight: 700;
+  }
+
+  /* ── TECH STACK ────────────────────────────────────────────── */
+  .tech-row { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 4px; }
+  .tech-pill {
+    display: flex; align-items: center; gap: 8px;
+    background: var(--gris-bg); border: 1px solid var(--borde);
+    border-radius: 10px; padding: 8px 14px;
+    font-size: .78rem;
+  }
+  .tech-dot {
+    width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0;
+  }
+  .tech-nombre { font-weight: 700; }
+  .tech-desc { color: var(--gris-cl); font-size: .72rem; }
+
+  /* ── REGLAS HR ─────────────────────────────────────────────── */
+  .regla-item {
+    display: flex; gap: 14px; align-items: flex-start;
+    padding: 12px 0; border-bottom: 1px solid var(--borde);
+  }
+  .regla-item:last-child { border-bottom: none; }
+  .regla-icono {
+    width: 34px; height: 34px; border-radius: 9px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: .95rem; flex-shrink: 0;
+  }
+  .regla-titulo { font-size: .85rem; font-weight: 700; margin-bottom: 2px; }
+  .regla-desc { font-size: .76rem; color: var(--gris-cl); line-height: 1.5; }
+
+  /* ── HORAS TRAMOS ──────────────────────────────────────────── */
+  .tramo-bar { display: flex; border-radius: 10px; overflow: hidden; height: 40px; margin: 14px 0 8px; }
+  .tramo-seg {
+    display: flex; align-items: center; justify-content: center;
+    font-size: .72rem; font-weight: 700; color: #fff;
+    position: relative;
+  }
+  .tramo-legend { display: flex; flex-wrap: wrap; gap: 10px; }
+  .tramo-litem { display: flex; align-items: center; gap: 6px; font-size: .76rem; }
+  .tramo-dot { width: 12px; height: 12px; border-radius: 3px; flex-shrink: 0; }
+
+  /* ── ROLES ─────────────────────────────────────────────────── */
+  .rol-card {
+    background: var(--blanco); border: 1px solid var(--borde);
+    border-radius: 14px; padding: 20px;
+    box-shadow: var(--sombra);
+  }
+  .rol-header { display: flex; align-items: center; gap: 10px; margin-bottom: 14px; }
+  .rol-avatar {
+    width: 42px; height: 42px; border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 1.2rem; flex-shrink: 0;
+  }
+  .rol-nombre { font-size: .95rem; font-weight: 800; }
+  .rol-sub { font-size: .73rem; color: var(--gris-cl); }
+  .permiso-list { list-style: none; padding: 0; }
+  .permiso-list li {
+    display: flex; align-items: center; gap: 8px;
+    font-size: .77rem; padding: 4px 0;
+    border-bottom: 1px solid var(--borde);
+  }
+  .permiso-list li:last-child { border-bottom: none; }
+  .perm-ok  { color: var(--verde); font-weight: 800; }
+  .perm-no  { color: var(--rojo); font-weight: 800; }
+
+  /* ── DB SCHEMA ─────────────────────────────────────────────── */
+  .tabla-db {
+    background: #0F172A; border-radius: 12px;
+    padding: 16px 18px; font-family: 'JetBrains Mono', monospace;
+    font-size: .72rem; line-height: 1.7; overflow-x: auto;
+  }
+  .db-table-name { color: #93C5FD; font-weight: 700; margin-bottom: 4px; display: block; }
+  .db-col { color: #D1D5DB; }
+  .db-type { color: #6EE7B7; }
+  .db-pk { color: #FCD34D; }
+  .db-comment { color: #6B7280; }
+
+  /* ── SEGURIDAD ─────────────────────────────────────────────── */
+  .seg-item {
+    display: flex; align-items: center; gap: 12px;
+    padding: 10px 0; border-bottom: 1px solid var(--borde);
+    font-size: .80rem;
+  }
+  .seg-item:last-child { border-bottom: none; }
+  .seg-check { font-size: 1rem; }
+
+  /* ── MODO DUAL ─────────────────────────────────────────────── */
+  .modo-card {
+    border-radius: 12px; padding: 18px;
+    display: flex; gap: 14px; align-items: flex-start;
+  }
+  .modo-icono { font-size: 2rem; flex-shrink: 0; }
+  .modo-titulo { font-size: .88rem; font-weight: 700; margin-bottom: 4px; }
+  .modo-desc { font-size: .75rem; color: var(--gris-cl); line-height: 1.5; }
+
+  /* ── FOOTER ────────────────────────────────────────────────── */
+  .footer {
+    background: #0F172A; color: #94A3B8;
+    text-align: center; padding: 28px;
+    font-size: .78rem; margin-top: 40px;
+  }
+  .footer strong { color: #E2E8F0; }
+
+  /* ── UTIL ──────────────────────────────────────────────────── */
+  .txt-azul   { color: var(--azul); }
+  .txt-verde  { color: var(--verde); }
+  .txt-ambar  { color: var(--ambar); }
+  .txt-rojo   { color: var(--rojo); }
+  .txt-morado { color: var(--morado); }
+  .txt-bold   { font-weight: 700; }
+  .mt8  { margin-top:  8px; }
+  .mt12 { margin-top: 12px; }
+  .mt16 { margin-top: 16px; }
+  .gap8 { gap: 8px; }
+  .mono { font-family: 'JetBrains Mono', monospace; font-size: .8rem; }
+</style>
+</head>
+<body>
+
+<!-- ══════════════════════════════════════════════════════════════════
+     PORTADA
+══════════════════════════════════════════════════════════════════ -->
+<div class="portada">
+  <div class="portada-inner">
+    <div class="portada-logo">pecepe<span>.</span></div>
+    <div class="portada-titulo">Aplicativo de Tareo de Operaciones</div>
+    <div class="portada-sub">
+      Sistema web colaborativo de gestión de horas — automatiza el cálculo de TTHH,
+      horas extras estratificadas y genera el reporte corporativo de operaciones
+      con validación multi-supervisor en tiempo real.
+    </div>
+    <div class="portada-badges">
+      <span class="badge badge-blanco">🐍 Python 3.12</span>
+      <span class="badge badge-blanco">⚡ Streamlit</span>
+      <span class="badge badge-blanco">🐘 PostgreSQL · Supabase</span>
+      <span class="badge badge-blanco">☁️ Render</span>
+      <span class="badge badge-blanco">📊 Plotly</span>
+      <span class="badge badge-blanco">📋 openpyxl</span>
+      <span class="badge badge-blanco">🔒 SHA-256 + Salt</span>
+    </div>
+  </div>
+</div>
+
+<div class="page">
+
+<!-- ══════════════════════════════════════════════════════════════════
+     1. KPIs DEL PROYECTO
+══════════════════════════════════════════════════════════════════ -->
+<div class="seccion-titulo">
+  <div class="seccion-icono">📊</div>
+  Métricas del Proyecto
+</div>
+
+<div class="grid-4">
+  <div class="card kpi">
+    <div class="kpi-num txt-azul">160</div>
+    <div class="kpi-label">Registros validados<br>por jornada</div>
+  </div>
+  <div class="card kpi">
+    <div class="kpi-num txt-verde">159/160</div>
+    <div class="kpi-label">Coincidencia exacta<br>con reporte real</div>
+  </div>
+  <div class="card kpi">
+    <div class="kpi-num txt-ambar">6</div>
+    <div class="kpi-label">Pestañas funcionales<br>en la aplicación</div>
+  </div>
+  <div class="card kpi">
+    <div class="kpi-num txt-morado">7</div>
+    <div class="kpi-label">Supervisores<br>concurrentes</div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════════════════════════
+     2. FLUJO DE DATOS
+══════════════════════════════════════════════════════════════════ -->
+<div class="seccion-titulo">
+  <div class="seccion-icono">🔄</div>
+  Flujo de Datos — De la marcación al reporte
+</div>
+
+<div class="card">
+  <div class="flujo">
+    <div class="flujo-paso">
+      <div class="flujo-num">1</div>
+      <div class="flujo-titulo">Sistema Asistencia</div>
+      <div class="flujo-sub">REPORTE_TAREO_<br>SISTEMA.xlsx<br><em>crudo del reloj</em></div>
+    </div>
+    <div class="flujo-paso">
+      <div class="flujo-num">2</div>
+      <div class="flujo-titulo">Cargar & Parsear</div>
+      <div class="flujo-sub">Auto-detecta fila<br>cabecera · normaliza<br>columnas</div>
+    </div>
+    <div class="flujo-paso">
+      <div class="flujo-num">3</div>
+      <div class="flujo-titulo">Condiciones</div>
+      <div class="flujo-sub">Corrido · Teórico 12h<br>Refrigerio · Descuento<br>Aumento extra</div>
+    </div>
+    <div class="flujo-paso">
+      <div class="flujo-num">4</div>
+      <div class="flujo-titulo">Cálculo TTHH</div>
+      <div class="flujo-sub">Motor tareo_core.py<br>reglas RR.HH.<br>tramos hora extra</div>
+    </div>
+    <div class="flujo-paso">
+      <div class="flujo-num">5</div>
+      <div class="flujo-titulo">Aprobación</div>
+      <div class="flujo-sub">Supervisor aprueba<br>su grupo · avance<br>por grupo</div>
+    </div>
+    <div class="flujo-paso">
+      <div class="flujo-num">6</div>
+      <div class="flujo-titulo">Reporte Final</div>
+      <div class="flujo-sub">REPORTE_OPERA-<br>CIONES.xlsx<br>18 columnas</div>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════════════════════════
+     3. PESTAÑAS DE LA APLICACIÓN
+══════════════════════════════════════════════════════════════════ -->
+<div class="seccion-titulo">
+  <div class="seccion-icono">🗂️</div>
+  Módulos de la Aplicación
+</div>
+
+<div class="tab-grid">
+
+  <div class="tab-card tab-azul">
+    <span class="tab-icono">📥</span>
+    <div class="tab-nombre">1. Cargar</div>
+    <div class="tab-desc">
+      Sube el archivo Excel del sistema de asistencia. Auto-detecta la fila
+      de cabecera, normaliza columnas y procesa 160 registros a la tabla de trabajo.
+      Botón de reinicio para nueva jornada.
+    </div>
+    <span class="tab-quien badge badge-azul">Solo Coordinador</span>
+  </div>
+
+  <div class="tab-card tab-verde">
+    <span class="tab-icono">🧮</span>
+    <div class="tab-nombre">2. Condiciones / TTHH</div>
+    <div class="tab-desc">
+      Editor masivo e individual de condiciones por grupo. Corrido, Teórico 12h,
+      Refrigerio, Descuento/Aumento extra, Jornada noche. Recalcula TTHH
+      en tiempo real y persiste por grupo sin conflictos.
+    </div>
+    <span class="tab-quien badge badge-verde">Coord. + Supervisores</span>
+  </div>
+
+  <div class="tab-card tab-ambar">
+    <span class="tab-icono">✅</span>
+    <div class="tab-nombre">3. Aprobación</div>
+    <div class="tab-desc">
+      Cada supervisor revisa las TTHH de su grupo y aprueba. Panel de avance
+      por grupo. Solo lo aprobado pasa al reporte final. Aprobación
+      masiva o individual por checkbox.
+    </div>
+    <span class="tab-quien badge badge-ambar">Coord. + Supervisores</span>
+  </div>
+
+  <div class="tab-card tab-morado">
+    <span class="tab-icono">📤</span>
+    <div class="tab-nombre">4. Reporte Final</div>
+    <div class="tab-desc">
+      Genera REPORTE_OPERACIONES con las 18 columnas del formato corporativo exacto.
+      Descarga en Excel (.xlsx) con formato azul Calibri y en CSV. KPIs de horas
+      totales, 25% y 35%.
+    </div>
+    <span class="tab-quien badge badge-azul">Solo Coordinador</span>
+  </div>
+
+  <div class="tab-card tab-teal">
+    <span class="tab-icono">📊</span>
+    <div class="tab-nombre">Dashboard</div>
+    <div class="tab-desc">
+      7 gráficos interactivos Plotly con filtros de grupo y turno. Sección A:
+      tareo original (turnos, registros/grupo, condiciones, horas marcación).
+      Sección B: TTHH desglosado, distribución horas extra, aprobación.
+    </div>
+    <span class="tab-quien badge badge-verde">Coord. + Supervisores</span>
+  </div>
+
+  <div class="tab-card tab-rojo">
+    <span class="tab-icono">📱</span>
+    <div class="tab-nombre">Compartir (WhatsApp)</div>
+    <div class="tab-desc">
+      Genera resumen y reporte final en texto formateado con emojis.
+      Botón verde abre WhatsApp con el mensaje listo. Descarga Excel para
+      adjuntar. Instrucciones para exportar gráficos como PNG.
+    </div>
+    <span class="tab-quien badge badge-verde">Coord. + Supervisores</span>
+  </div>
+
+</div>
+
+<!-- ══════════════════════════════════════════════════════════════════
+     4. MOTOR DE CÁLCULO — REGLAS RR.HH.
+══════════════════════════════════════════════════════════════════ -->
+<div class="seccion-titulo">
+  <div class="seccion-icono">⚙️</div>
+  Motor de Cálculo — Reglas RR.HH. (tareo_core.py)
+</div>
+
+<div class="grid-2">
+  <div class="card">
+    <div class="card-titulo">Fórmula TTHH</div>
+
+    <div class="regla-item">
+      <div class="regla-icono" style="background:#EFF6FF;">📐</div>
+      <div>
+        <div class="regla-titulo">Horas Marcación (bruto)</div>
+        <div class="regla-desc">
+          <span class="mono">SALIDA − ENTRADA</span> con detección de cruce de medianoche
+          (turno noche). Si salida ≤ entrada → suma 24 h.
+        </div>
+      </div>
+    </div>
+
+    <div class="regla-item">
+      <div class="regla-icono" style="background:#ECFDF5;">🍽️</div>
+      <div>
+        <div class="regla-titulo">Descuento Refrigerio (45 min)</div>
+        <div class="regla-desc">
+          Se descuenta SALVO que: grupo esté en lista sin refrigerio
+          (E, PCP, N, 5) · observación sea "C" (corrido) · o "12" (teórico).
+        </div>
+      </div>
+    </div>
+
+    <div class="regla-item">
+      <div class="regla-icono" style="background:#F5F3FF;">⏱️</div>
+      <div>
+        <div class="regla-titulo">Teórico 12h</div>
+        <div class="regla-desc">
+          Si OBS = "12" → TTHH = 12.0 h exactas. Horarios teóricos:
+          DÍA 07:00–19:00 · NOCHE 19:00–07:00 o 20:00–08:00 (configurable).
+        </div>
+      </div>
+    </div>
+
+    <div class="regla-item">
+      <div class="regla-icono" style="background:#FFFBEB;">➕</div>
+      <div>
+        <div class="regla-titulo">Ajustes Manuales</div>
+        <div class="regla-desc">
+          Descuento extra −1/−2/−3 h · Aumento extra +1/+2/+3 h.
+          Se suman/restan sobre el bruto antes de aplicar refrigerio.
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-titulo">Tramos de Horas Extra</div>
+
+    <div class="tramo-bar">
+      <div class="tramo-seg" style="background:#059669; width:61.5%;">Normal ≤ 8 h</div>
+      <div class="tramo-seg" style="background:#D97706; width:15.4%;">25%</div>
+      <div class="tramo-seg" style="background:#DC2626; flex:1;">35% +</div>
+    </div>
+
+    <div class="tramo-legend">
+      <div class="tramo-litem">
+        <div class="tramo-dot" style="background:#059669;"></div>
+        <div><strong>Hora Normal</strong> — hasta 8 h</div>
+      </div>
+      <div class="tramo-litem">
+        <div class="tramo-dot" style="background:#D97706;"></div>
+        <div><strong>Hora 25%</strong> — de 8 h a 10 h</div>
+      </div>
+      <div class="tramo-litem">
+        <div class="tramo-dot" style="background:#DC2626;"></div>
+        <div><strong>Hora 35%</strong> — excede 10 h</div>
+      </div>
+      <div class="tramo-litem">
+        <div class="tramo-dot" style="background:#7C3AED;"></div>
+        <div><strong>Hora 100%</strong> — dom/feriados (manual)</div>
+      </div>
+      <div class="tramo-litem">
+        <div class="tramo-dot" style="background:#374151;"></div>
+        <div><strong>BONO HH</strong> — manual</div>
+      </div>
+    </div>
+
+    <div class="mt16" style="background:#F8FAFC;border-radius:10px;padding:14px;">
+      <div class="card-titulo" style="margin-bottom:8px;">Configuración Global (editable)</div>
+      <div style="display:flex;flex-direction:column;gap:5px;font-size:.77rem;">
+        <div>🕐 <strong>Refrigerio:</strong> 45 min (ajustable)</div>
+        <div>👥 <strong>Grupos sin refrigerio:</strong> E, PCP, N, 5</div>
+        <div>☀️ <strong>Jornada teórica DÍA:</strong> 07:00 – 19:00</div>
+        <div>🌙 <strong>Jornada noche A:</strong> 19:00 – 07:00</div>
+        <div>🌙 <strong>Jornada noche B:</strong> 20:00 – 08:00</div>
+        <div>📦 <strong>Producto:</strong> POTA · <strong>Zona:</strong> 1</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════════════════════════
+     5. GRÁFICOS DEL DASHBOARD
+══════════════════════════════════════════════════════════════════ -->
+<div class="seccion-titulo">
+  <div class="seccion-icono">📈</div>
+  Dashboard — 7 Gráficos Profesionales (Plotly)
+</div>
+
+<div class="grid-2">
+  <div class="card">
+    <div class="card-titulo">Sección A — Tareo Original</div>
+    <div style="display:flex;flex-direction:column;gap:10px;margin-top:4px;">
+      <div style="display:flex;align-items:center;gap:12px;padding:10px;background:#EFF6FF;border-radius:10px;">
+        <span style="font-size:1.5rem;">🌗</span>
+        <div>
+          <div style="font-size:.83rem;font-weight:700;">Distribución de Turnos</div>
+          <div style="font-size:.73rem;color:#6B7280;">Donut DÍA vs NOCHE con % y conteo</div>
+        </div>
+      </div>
+      <div style="display:flex;align-items:center;gap:12px;padding:10px;background:#ECFDF5;border-radius:10px;">
+        <span style="font-size:1.5rem;">👷</span>
+        <div>
+          <div style="font-size:.83rem;font-weight:700;">Personas por Grupo y Turno</div>
+          <div style="font-size:.73rem;color:#6B7280;">Barras apiladas DÍA/NOCHE por grupo</div>
+        </div>
+      </div>
+      <div style="display:flex;align-items:center;gap:12px;padding:10px;background:#F5F3FF;border-radius:10px;">
+        <span style="font-size:1.5rem;">📋</span>
+        <div>
+          <div style="font-size:.83rem;font-weight:700;">Condiciones de Jornada</div>
+          <div style="font-size:.73rem;color:#6B7280;">Pie Normal / Corrido (C) / Teórico 12h</div>
+        </div>
+      </div>
+      <div style="display:flex;align-items:center;gap:12px;padding:10px;background:#FFFBEB;border-radius:10px;">
+        <span style="font-size:1.5rem;">⏱️</span>
+        <div>
+          <div style="font-size:.83rem;font-weight:700;">Prom. Horas Marcación por Grupo</div>
+          <div style="font-size:.73rem;color:#6B7280;">Barras horizontales con escala de color</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-titulo">Sección B — Tareo Final</div>
+    <div style="display:flex;flex-direction:column;gap:10px;margin-top:4px;">
+      <div style="display:flex;align-items:center;gap:12px;padding:10px;background:#EFF6FF;border-radius:10px;">
+        <span style="font-size:1.5rem;">📊</span>
+        <div>
+          <div style="font-size:.83rem;font-weight:700;">TTHH Desglosado por Grupo</div>
+          <div style="font-size:.73rem;color:#6B7280;">Barras apiladas: Normal · 25% · 35%</div>
+        </div>
+      </div>
+      <div style="display:flex;align-items:center;gap:12px;padding:10px;background:#FEF2F2;border-radius:10px;">
+        <span style="font-size:1.5rem;">📈</span>
+        <div>
+          <div style="font-size:.83rem;font-weight:700;">Distribución Total de Horas Extra</div>
+          <div style="font-size:.73rem;color:#6B7280;">Donut: Normal / Hora 25% / Hora 35%</div>
+        </div>
+      </div>
+      <div style="display:flex;align-items:center;gap:12px;padding:10px;background:#ECFDF5;border-radius:10px;">
+        <span style="font-size:1.5rem;">✅</span>
+        <div>
+          <div style="font-size:.83rem;font-weight:700;">Estado de Aprobación por Grupo</div>
+          <div style="font-size:.73rem;color:#6B7280;">Barras horizontales: Aprobados vs Pendientes</div>
+        </div>
+      </div>
+      <div style="padding:10px;background:#F9FAFB;border-radius:10px;border:1px dashed #D1D5DB;">
+        <div style="font-size:.78rem;font-weight:700;margin-bottom:4px;">🔍 Filtros Interactivos</div>
+        <div style="font-size:.72rem;color:#6B7280;">
+          Multiselect grupos · Turno (DÍA/NOCHE/Todos) · KPIs: Registros,
+          TTHH Total, Hora 25%, Hora 35%, % Aprobado
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════════════════════════
+     6. COMPARTIR POR WHATSAPP
+══════════════════════════════════════════════════════════════════ -->
+<div class="seccion-titulo">
+  <div class="seccion-icono">📱</div>
+  Módulo de Compartir por WhatsApp
+</div>
+
+<div class="card">
+  <div class="grid-3">
+    <div style="padding:16px;background:#F0FDF4;border-radius:12px;border:1px solid #A7F3D0;">
+      <div style="font-size:1.5rem;margin-bottom:8px;">💬</div>
+      <div style="font-size:.85rem;font-weight:700;margin-bottom:4px;color:#065F46;">Resumen Tareo</div>
+      <div style="font-size:.74rem;color:#065F46;opacity:.8;">
+        Total registros · Turnos DÍA/NOCHE · Condiciones · TTHH Total ·
+        Desglose por grupo con horas 25% y 35%. Disponible para todos los roles.
+      </div>
+      <div style="margin-top:10px;">
+        <span class="badge" style="background:#25D366;color:#fff;font-size:.7rem;">Abre WhatsApp directamente</span>
+      </div>
+    </div>
+
+    <div style="padding:16px;background:#EFF6FF;border-radius:12px;border:1px solid #BFDBFE;">
+      <div style="font-size:1.5rem;margin-bottom:8px;">📤</div>
+      <div style="font-size:.85rem;font-weight:700;margin-bottom:4px;color:#1E40AF;">Reporte Operaciones Final</div>
+      <div style="font-size:.74rem;color:#1E40AF;opacity:.8;">
+        Total registros aprobados · Horas por tramos · Detalle por área/grupo.
+        Solo disponible para el Coordinador cuando hay registros aprobados.
+      </div>
+      <div style="margin-top:10px;">
+        <span class="badge" style="background:#25D366;color:#fff;font-size:.7rem;">Abre WhatsApp directamente</span>
+      </div>
+    </div>
+
+    <div style="padding:16px;background:#FFFBEB;border-radius:12px;border:1px solid #FDE68A;">
+      <div style="font-size:1.5rem;margin-bottom:8px;">📁</div>
+      <div style="font-size:.85rem;font-weight:700;margin-bottom:4px;color:#92400E;">Archivos Adjuntos</div>
+      <div style="font-size:.74rem;color:#92400E;opacity:.8;">
+        Descarga Excel tareo trabajado y reporte final para adjuntar
+        en WhatsApp. Instrucciones para exportar gráficos Plotly como PNG
+        con el ícono 📷 de la barra de herramientas.
+      </div>
+      <div style="margin-top:10px;">
+        <span class="badge badge-ambar">xlsx + instrucciones PNG</span>
+      </div>
+    </div>
+  </div>
+
+  <div style="margin-top:14px;padding:12px 16px;background:#F8FAFC;border-radius:10px;font-size:.76rem;color:#374151;">
+    <strong>Formato del mensaje:</strong> Encabezado PECEPE · Fecha/hora · Total registros · Turnos ·
+    Condiciones · TTHH total · Horas 25% y 35% · Detalle por grupo · Firma app
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════════════════════════
+     7. ROLES Y PERMISOS
+══════════════════════════════════════════════════════════════════ -->
+<div class="seccion-titulo">
+  <div class="seccion-icono">👥</div>
+  Roles y Control de Acceso
+</div>
+
+<div class="grid-2">
+  <div class="rol-card">
+    <div class="rol-header">
+      <div class="rol-avatar" style="background:#EFF6FF;font-size:1.4rem;">👑</div>
+      <div>
+        <div class="rol-nombre txt-azul">Coordinador</div>
+        <div class="rol-sub">Usuario: <span class="mono">donet</span> · Contraseña: <span class="mono">donet2026</span></div>
+      </div>
+    </div>
+    <ul class="permiso-list">
+      <li><span class="perm-ok">✔</span> Cargar / reiniciar el tareo del sistema</li>
+      <li><span class="perm-ok">✔</span> Editar condiciones de TODOS los grupos</li>
+      <li><span class="perm-ok">✔</span> Aprobar / desaprobar cualquier grupo</li>
+      <li><span class="perm-ok">✔</span> Generar y descargar el reporte final</li>
+      <li><span class="perm-ok">✔</span> Ver Dashboard completo (todos los grupos)</li>
+      <li><span class="perm-ok">✔</span> Compartir reporte final por WhatsApp</li>
+      <li><span class="perm-ok">✔</span> Configurar reglas globales (sidebar)</li>
+      <li><span class="perm-ok">✔</span> Gestionar usuarios (crear/editar/borrar)</li>
+    </ul>
+  </div>
+
+  <div class="rol-card">
+    <div class="rol-header">
+      <div class="rol-avatar" style="background:#ECFDF5;font-size:1.4rem;">🦺</div>
+      <div>
+        <div class="rol-nombre txt-verde">Supervisor de Grupo</div>
+        <div class="rol-sub">Ej: <span class="mono">sup_N</span> · Accede solo a <strong>su grupo</strong></div>
+      </div>
+    </div>
+    <ul class="permiso-list">
+      <li><span class="perm-no">✘</span> <span style="color:#9CA3AF;">Cargar / reiniciar tareo</span></li>
+      <li><span class="perm-ok">✔</span> Editar condiciones de <strong>su grupo</strong></li>
+      <li><span class="perm-ok">✔</span> Aprobar / desaprobar <strong>su grupo</strong></li>
+      <li><span class="perm-no">✘</span> <span style="color:#9CA3AF;">Reporte final completo</span></li>
+      <li><span class="perm-ok">✔</span> Dashboard filtrado a <strong>su grupo</strong></li>
+      <li><span class="perm-ok">✔</span> Compartir resumen de su grupo por WhatsApp</li>
+      <li><span class="perm-no">✘</span> <span style="color:#9CA3AF;">Configurar reglas globales</span></li>
+      <li><span class="perm-no">✘</span> <span style="color:#9CA3AF;">Gestión de usuarios</span></li>
+    </ul>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════════════════════════
+     8. ARQUITECTURA TÉCNICA
+══════════════════════════════════════════════════════════════════ -->
+<div class="seccion-titulo">
+  <div class="seccion-icono">🏗️</div>
+  Arquitectura Técnica
+</div>
+
+<div class="grid-2">
+  <div class="card">
+    <div class="card-titulo">Stack de Tecnologías</div>
+    <div class="tech-row">
+      <div class="tech-pill">
+        <div class="tech-dot" style="background:#3B82F6;"></div>
+        <div><div class="tech-nombre">Python 3.12</div><div class="tech-desc">Lenguaje base</div></div>
+      </div>
+      <div class="tech-pill">
+        <div class="tech-dot" style="background:#FF4B4B;"></div>
+        <div><div class="tech-nombre">Streamlit ≥1.40</div><div class="tech-desc">UI web responsiva</div></div>
+      </div>
+      <div class="tech-pill">
+        <div class="tech-dot" style="background:#150458;"></div>
+        <div><div class="tech-nombre">pandas ≥2.0</div><div class="tech-desc">DataFrames</div></div>
+      </div>
+      <div class="tech-pill">
+        <div class="tech-dot" style="background:#1F7244;"></div>
+        <div><div class="tech-nombre">openpyxl ≥3.1</div><div class="tech-desc">Excel con formato</div></div>
+      </div>
+      <div class="tech-pill">
+        <div class="tech-dot" style="background:#6929C4;"></div>
+        <div><div class="tech-nombre">Plotly ≥5.0</div><div class="tech-desc">Gráficos interactivos</div></div>
+      </div>
+      <div class="tech-pill">
+        <div class="tech-dot" style="background:#D01F3C;"></div>
+        <div><div class="tech-nombre">SQLAlchemy ≥2.0</div><div class="tech-desc">ORM PostgreSQL</div></div>
+      </div>
+      <div class="tech-pill">
+        <div class="tech-dot" style="background:#336791;"></div>
+        <div><div class="tech-nombre">psycopg2-binary</div><div class="tech-desc">Driver PostgreSQL</div></div>
+      </div>
+      <div class="tech-pill">
+        <div class="tech-dot" style="background:#3ECF8E;"></div>
+        <div><div class="tech-nombre">Supabase</div><div class="tech-desc">PostgreSQL 17.6 cloud</div></div>
+      </div>
+      <div class="tech-pill">
+        <div class="tech-dot" style="background:#46E3B7;"></div>
+        <div><div class="tech-nombre">Render</div><div class="tech-desc">Hosting cloud</div></div>
+      </div>
+      <div class="tech-pill">
+        <div class="tech-dot" style="background:#F05033;"></div>
+        <div><div class="tech-nombre">Git / GitHub</div><div class="tech-desc">Control de versiones</div></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-titulo">Modo Dual — Online + Offline</div>
+    <div class="modo-card" style="background:#EFF6FF;border-radius:12px;margin-bottom:10px;">
+      <div class="modo-icono">🌐</div>
+      <div>
+        <div class="modo-titulo txt-azul">Modo Online (Supabase)</div>
+        <div class="modo-desc">
+          Con <span class="mono">DATABASE_URL</span> → usa PostgreSQL en Supabase.
+          Persistencia compartida entre todos los supervisores. Escritura por subconjunto
+          (<span class="mono">UPDATE WHERE id IN grupo</span>).
+          SSL requerido. Multi-usuario concurrente sin conflictos.
+        </div>
+      </div>
+    </div>
+    <div class="modo-card" style="background:#F9FAFB;border-radius:12px;">
+      <div class="modo-icono">💾</div>
+      <div>
+        <div class="modo-titulo">Modo Offline (Archivos locales)</div>
+        <div class="modo-desc">
+          Sin <span class="mono">DATABASE_URL</span> → archivos locales:
+          <span class="mono">estado_tareo.pkl</span> (DataFrame),
+          <span class="mono">usuarios.json</span> (hashes),
+          <span class="mono">config.json</span> (reglas).
+          Ideal para trabajo sin conexión o desarrollo local.
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════════════════════════
+     9. ESQUEMA DE BASE DE DATOS
+══════════════════════════════════════════════════════════════════ -->
+<div class="seccion-titulo">
+  <div class="seccion-icono">🗄️</div>
+  Esquema de Base de Datos — Supabase / PostgreSQL 17.6
+</div>
+
+<div class="grid-3">
+  <div class="card">
+    <div class="tabla-db">
+      <span class="db-table-name">TABLE: usuarios</span>
+      <div><span class="db-pk">usuario</span>  <span class="db-type">TEXT PK</span></div>
+      <div><span class="db-col">salt</span>    <span class="db-type">TEXT</span></div>
+      <div><span class="db-col">hash</span>    <span class="db-type">TEXT</span></div>
+      <div><span class="db-col">rol</span>     <span class="db-type">TEXT</span> <span class="db-comment">-- coord/sup</span></div>
+      <div><span class="db-col">grupo</span>   <span class="db-type">TEXT</span> <span class="db-comment">-- NULL si coord</span></div>
+    </div>
+    <div class="mt8" style="font-size:.72rem;color:#6B7280;">
+      Contraseñas con hash SHA-256 + sal 16 chars hex. Nunca en claro.
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="tabla-db">
+      <span class="db-table-name">TABLE: config</span>
+      <div><span class="db-pk">id</span>      <span class="db-type">INT PK = 1</span></div>
+      <div><span class="db-col">data</span>   <span class="db-type">JSONB</span></div>
+      <div class="db-comment mt8">
+        -- refrigerio_min, grupos_sin_refrigerio,<br>
+        -- jornadas teóricas, producto, zona, etc.
+      </div>
+    </div>
+    <div class="mt8" style="font-size:.72rem;color:#6B7280;">
+      Una sola fila. El coordinador edita desde el sidebar y se comparte globalmente.
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="tabla-db">
+      <span class="db-table-name">TABLE: tareo</span>
+      <div><span class="db-pk">id</span>      <span class="db-type">SERIAL PK</span></div>
+      <div><span class="db-col">NOMBRES</span>  <span class="db-type">TEXT</span></div>
+      <div><span class="db-col">GRUPO</span>    <span class="db-type">TEXT</span></div>
+      <div><span class="db-col">TURNO</span>    <span class="db-type">TEXT</span></div>
+      <div><span class="db-col">Corrido</span>  <span class="db-type">BOOL</span></div>
+      <div><span class="db-col">Aprobado</span> <span class="db-type">BOOL</span></div>
+      <div><span class="db-comment">… +15 columnas más</span></div>
+    </div>
+    <div class="mt8" style="font-size:.72rem;color:#6B7280;">
+      Truncate + insert al cargar. Update parcial por grupo (sin pisar a otros).
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════════════════════════
+     10. SEGURIDAD
+══════════════════════════════════════════════════════════════════ -->
+<div class="seccion-titulo">
+  <div class="seccion-icono">🔒</div>
+  Seguridad del Aplicativo
+</div>
+
+<div class="grid-2">
+  <div class="card">
+    <div class="card-titulo">Medidas Implementadas</div>
+    <div class="seg-item"><span class="seg-check">🔐</span><div><strong>Hash SHA-256 + sal</strong> — contraseñas nunca en claro en DB ni logs</div></div>
+    <div class="seg-item"><span class="seg-check">🌐</span><div><strong>SSL requerido</strong> — conexión a Supabase con <span class="mono">sslmode=require</span></div></div>
+    <div class="seg-item"><span class="seg-check">🚫</span><div><strong>.env en .gitignore</strong> — creado ANTES del primer commit, verificado con <span class="mono">git check-ignore</span></div></div>
+    <div class="seg-item"><span class="seg-check">🔑</span><div><strong>Variables de entorno</strong> — DATABASE_URL solo en Render Environment y .env local</div></div>
+    <div class="seg-item"><span class="seg-check">👤</span><div><strong>Control de roles</strong> — supervisor solo ve y edita su grupo; coordinador todo</div></div>
+    <div class="seg-item"><span class="seg-check">📄</span><div><strong>.env.example</strong> — documenta variables necesarias sin valores reales</div></div>
+  </div>
+
+  <div class="card">
+    <div class="card-titulo">Archivos del Proyecto</div>
+    <div style="display:flex;flex-direction:column;gap:6px;font-size:.76rem;">
+      <div style="display:flex;gap:10px;padding:8px 10px;background:#F8FAFC;border-radius:8px;">
+        <span class="mono" style="color:#1F4E9B;min-width:160px;">app.py</span>
+        <span style="color:#6B7280;">Dashboard Streamlit — 6 pestañas, login, sidebar</span>
+      </div>
+      <div style="display:flex;gap:10px;padding:8px 10px;background:#F8FAFC;border-radius:8px;">
+        <span class="mono" style="color:#1F4E9B;min-width:160px;">tareo_core.py</span>
+        <span style="color:#6B7280;">Motor de cálculo TTHH, tramos, exportar Excel</span>
+      </div>
+      <div style="display:flex;gap:10px;padding:8px 10px;background:#F8FAFC;border-radius:8px;">
+        <span class="mono" style="color:#1F4E9B;min-width:160px;">dashboard_charts.py</span>
+        <span style="color:#6B7280;">7 gráficos Plotly + helpers WhatsApp</span>
+      </div>
+      <div style="display:flex;gap:10px;padding:8px 10px;background:#F8FAFC;border-radius:8px;">
+        <span class="mono" style="color:#1F4E9B;min-width:160px;">db.py</span>
+        <span style="color:#6B7280;">Capa Supabase — engine, CRUD usuarios/tareo/config</span>
+      </div>
+      <div style="display:flex;gap:10px;padding:8px 10px;background:#F8FAFC;border-radius:8px;">
+        <span class="mono" style="color:#1F4E9B;min-width:160px;">auth.py</span>
+        <span style="color:#6B7280;">Autenticación SHA-256, crear/actualizar usuarios</span>
+      </div>
+      <div style="display:flex;gap:10px;padding:8px 10px;background:#F8FAFC;border-radius:8px;">
+        <span class="mono" style="color:#1F4E9B;min-width:160px;">render.yaml</span>
+        <span style="color:#6B7280;">Blueprint Render — Python 3.12, build + start</span>
+      </div>
+      <div style="display:flex;gap:10px;padding:8px 10px;background:#FEF2F2;border-radius:8px;">
+        <span class="mono" style="color:#DC2626;min-width:160px;">.env</span>
+        <span style="color:#6B7280;">⛔ Solo local — en .gitignore desde el inicio</span>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════════════════════════
+     11. CONCURRENCIA MULTI-SUPERVISOR
+══════════════════════════════════════════════════════════════════ -->
+<div class="seccion-titulo">
+  <div class="seccion-icono">🔀</div>
+  Concurrencia Multi-Supervisor
+</div>
+
+<div class="card">
+  <div class="grid-3">
+    <div style="text-align:center;padding:16px;background:#EFF6FF;border-radius:12px;">
+      <div style="font-size:2rem;margin-bottom:8px;">👑</div>
+      <div style="font-size:.85rem;font-weight:700;color:#1F4E9B;margin-bottom:4px;">Coordinador</div>
+      <div style="font-size:.73rem;color:#6B7280;margin-bottom:10px;">Carga el tareo completo</div>
+      <div style="font-size:.7rem;font-family:monospace;background:#DBEAFE;padding:6px 10px;border-radius:6px;color:#1E40AF;">
+        tareo_replace() → TRUNCATE + INSERT
+      </div>
+    </div>
+
+    <div style="display:flex;flex-direction:column;gap:8px;padding:16px;background:#ECFDF5;border-radius:12px;">
+      <div style="font-size:.85rem;font-weight:700;color:#065F46;text-align:center;margin-bottom:4px;">⚡ Supervisores simultáneos</div>
+      <div style="font-size:.73rem;color:#065F46;background:#D1FAE5;padding:8px;border-radius:8px;">
+        🦺 Sup. Grupo N → edita filas N
+      </div>
+      <div style="font-size:.73rem;color:#065F46;background:#D1FAE5;padding:8px;border-radius:8px;">
+        🦺 Sup. Grupo E → edita filas E
+      </div>
+      <div style="font-size:.73rem;color:#065F46;background:#D1FAE5;padding:8px;border-radius:8px;">
+        🦺 Sup. Grupo 1 → edita filas 1…
+      </div>
+      <div style="font-size:.7rem;font-family:monospace;background:#6EE7B7;padding:6px 10px;border-radius:6px;color:#065F46;text-align:center;">
+        UPDATE WHERE id IN (grupo)
+      </div>
+    </div>
+
+    <div style="text-align:center;padding:16px;background:#FFFBEB;border-radius:12px;">
+      <div style="font-size:2rem;margin-bottom:8px;">👑</div>
+      <div style="font-size:.85rem;font-weight:700;color:#92400E;margin-bottom:4px;">Coordinador</div>
+      <div style="font-size:.73rem;color:#6B7280;margin-bottom:10px;">Ve todo consolidado y aprueba</div>
+      <div style="font-size:.7rem;font-family:monospace;background:#FDE68A;padding:6px 10px;border-radius:6px;color:#92400E;">
+        tareo_load() → SELECT * FROM tareo
+      </div>
+    </div>
+  </div>
+
+  <div style="margin-top:14px;padding:12px;background:#F0FDF4;border-radius:10px;font-size:.76rem;color:#374151;text-align:center;">
+    💡 <strong>Clave:</strong> Cada supervisor actualiza SOLO las filas de su grupo (<span class="mono">UPDATE WHERE id IN grupo_filtrado</span>). No existen bloqueos ni sobreescrituras entre grupos.
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════════════════════════
+     12. DESPLIEGUE EN RENDER
+══════════════════════════════════════════════════════════════════ -->
+<div class="seccion-titulo">
+  <div class="seccion-icono">☁️</div>
+  Despliegue en Render — Producción
+</div>
+
+<div class="card">
+  <div class="grid-3">
+    <div>
+      <div class="card-titulo">URL Pública</div>
+      <div style="font-size:.85rem;font-weight:600;color:#1F4E9B;word-break:break-all;">
+        https://operaciones-ysvc.onrender.com
+      </div>
+      <div style="font-size:.73rem;color:#6B7280;margin-top:6px;">
+        Plan Free · Python 3.12.7 · Instancia web única
+      </div>
+    </div>
+
+    <div>
+      <div class="card-titulo">Comando de Build</div>
+      <div class="tabla-db" style="padding:10px 12px;font-size:.72rem;">
+        <span style="color:#6EE7B7;">pip install</span>
+        <span style="color:#D1D5DB;"> -r requirements.txt</span>
+      </div>
+      <div style="font-size:.72rem;color:#6B7280;margin-top:6px;">
+        Instala: streamlit · pandas · plotly · openpyxl · SQLAlchemy · psycopg2
+      </div>
+    </div>
+
+    <div>
+      <div class="card-titulo">Comando de Start</div>
+      <div class="tabla-db" style="padding:10px 12px;font-size:.68rem;line-height:1.6;">
+        <span style="color:#6EE7B7;">streamlit run</span>
+        <span style="color:#D1D5DB;"> app.py \<br>
+        --server.port $PORT \<br>
+        --server.address 0.0.0.0 \<br>
+        --server.headless true</span>
+      </div>
+    </div>
+  </div>
+
+  <div style="margin-top:14px;display:flex;flex-wrap:wrap;gap:10px;">
+    <span class="badge badge-azul">📦 render.yaml (Blueprint)</span>
+    <span class="badge badge-verde">🔐 DATABASE_URL en Environment</span>
+    <span class="badge badge-ambar">🔄 Auto-deploy en push a main</span>
+    <span class="badge badge-morado">🐘 Supabase PostgreSQL 17.6</span>
+    <span class="badge badge-gris">🐍 .python-version: 3.12</span>
+  </div>
+</div>
+
+</div><!-- /page -->
+
+<!-- ══════════════════════════════════════════════════════════════════
+     FOOTER
+══════════════════════════════════════════════════════════════════ -->
+<div class="footer">
+  <strong>pecepe.</strong> — Aplicativo de Tareo de Operaciones &nbsp;·&nbsp;
+  Python 3.12 · Streamlit · Supabase · Render · Plotly &nbsp;·&nbsp;
+  <strong>© APLICACIONES — DONET 2026</strong>
+</div>
+
+</body>
+</html>
