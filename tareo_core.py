@@ -295,6 +295,7 @@ def construir_tabla_trabajo(df_sistema: pd.DataFrame, cfg: Config) -> pd.DataFra
             "Corrido": bool(obs["corrido"]),
             "Teorico12": bool(obs["teorico12"]),
             "DescuentoExtra": float(obs["descuento_extra"]),
+            "AumentoExtra": 0.0,
             "Refrigerio": not (grupo_sin_refri or obs["corrido"] or obs["teorico12"]),
             "JornadaNoche": cfg.jornada_noche_default,
             "OBSERVACION": "" if r.get("observacion") is None else str(r.get("observacion")).strip(),
@@ -315,7 +316,8 @@ def _tthh_de_fila(row: pd.Series, cfg: Config) -> float:
     if bool(row.get("Refrigerio")) and not bool(row.get("Corrido")):
         descuento += cfg.refrigerio_min / 60.0
     descuento += float(row.get("DescuentoExtra") or 0.0)
-    return max(0.0, round(bruto - descuento, 4))
+    aumento = float(row.get("AumentoExtra") or 0.0)
+    return max(0.0, round(bruto - descuento + aumento, 4))
 
 
 def _inicio_salida_final(row: pd.Series, cfg: Config) -> tuple[str, str]:
@@ -349,6 +351,7 @@ def recalcular(df: pd.DataFrame, cfg: Config) -> pd.DataFrame:
         h35.append(round(e35, 4))
     df["TTHH"] = tthh
     df["TTHH_HHMM"] = [hours_to_hhmm(x) for x in tthh]
+    df["HORAS_MARC_HHMM"] = [hours_to_hhmm(x) for x in df["HORAS_MARCACION"]]
     df["INICIO_FINAL"] = inicios
     df["SALIDA_FINAL"] = salidas
     df["hora normal"] = h_norm

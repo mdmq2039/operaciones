@@ -38,11 +38,12 @@ _ENGINE: Optional[Engine] = None
 
 # Columnas editables del tareo (las que actualiza cada supervisor)
 COLS_EDITABLES = ["corrido", "teorico12", "refrigerio", "descuento_extra",
-                  "jornada_noche", "aprobado"]
+                  "aumento_extra", "jornada_noche", "aprobado"]
 # Todas las columnas persistidas del tareo (orden de insert)
 COLS_TAREO = ["nombres", "grupo", "service", "fecha", "turno", "entrada",
               "salida", "horas_marcacion", "corrido", "teorico12", "refrigerio",
-              "descuento_extra", "jornada_noche", "observacion", "aprobado"]
+              "descuento_extra", "aumento_extra", "jornada_noche", "observacion",
+              "aprobado"]
 
 
 def database_url() -> Optional[str]:
@@ -104,10 +105,13 @@ def init_schema() -> None:
             teorico12       BOOLEAN,
             refrigerio      BOOLEAN,
             descuento_extra DOUBLE PRECISION,
+            aumento_extra   DOUBLE PRECISION,
             jornada_noche   TEXT,
             observacion     TEXT,
             aprobado        BOOLEAN
         )""",
+        # Migración para tablas creadas antes de añadir 'aumento_extra'
+        "ALTER TABLE tareo ADD COLUMN IF NOT EXISTS aumento_extra DOUBLE PRECISION DEFAULT 0",
     ]
     eng = get_engine()
     with eng.begin() as cx:
@@ -187,6 +191,7 @@ def _df_a_filas(df: pd.DataFrame) -> list[dict]:
             "teorico12": bool(r.get("Teorico12")),
             "refrigerio": bool(r.get("Refrigerio")),
             "descuento_extra": float(r.get("DescuentoExtra") or 0.0),
+            "aumento_extra": float(r.get("AumentoExtra") or 0.0),
             "jornada_noche": r.get("JornadaNoche"),
             "observacion": r.get("OBSERVACION"),
             "aprobado": bool(r.get("Aprobado")),
@@ -219,7 +224,8 @@ _DB_A_DF = {
     "fecha": "FECHA", "turno": "TURNO", "entrada": "ENTRADA", "salida": "SALIDA",
     "horas_marcacion": "HORAS_MARCACION", "corrido": "Corrido",
     "teorico12": "Teorico12", "refrigerio": "Refrigerio",
-    "descuento_extra": "DescuentoExtra", "jornada_noche": "JornadaNoche",
+    "descuento_extra": "DescuentoExtra", "aumento_extra": "AumentoExtra",
+    "jornada_noche": "JornadaNoche",
     "observacion": "OBSERVACION", "aprobado": "Aprobado",
 }
 
@@ -256,6 +262,7 @@ def tareo_save_subset(df_subset: pd.DataFrame) -> None:
             "teorico12": bool(r.get("Teorico12")),
             "refrigerio": bool(r.get("Refrigerio")),
             "descuento_extra": float(r.get("DescuentoExtra") or 0.0),
+            "aumento_extra": float(r.get("AumentoExtra") or 0.0),
             "jornada_noche": r.get("JornadaNoche"),
             "aprobado": bool(r.get("Aprobado")),
         })

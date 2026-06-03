@@ -160,8 +160,8 @@ st.session_state.tabla = cargar_estado_app()
 with st.sidebar:
     rol_txt = "Coordinador" if ES_COORD else f"Supervisor · Grupo {GRUPO_USER}"
     st.markdown(f"👤 **{USER['usuario']}**  \n_{rol_txt}_")
-    if st.button("Cerrar sesión"):
-        st.session_state.user = None
+    if st.button("🚪 Salir", type="primary", use_container_width=True):
+        st.session_state.clear()
         st.rerun()
     st.divider()
 
@@ -290,9 +290,15 @@ if tab_cargar is not None:
             c3.metric("Corrido (C)", int(df["Corrido"].sum()))
             c4.metric("Teórico 12 h", int(df["Teorico12"].sum()))
             st.dataframe(
-                df[["NOMBRES", "GRUPO", "SERVICE", "TURNO", "ENTRADA", "SALIDA",
-                    "HORAS_MARCACION", "OBSERVACION", "TTHH_HHMM"]],
+                df[["NOMBRES", "GRUPO", "SERVICE", "FECHA", "TURNO", "ENTRADA",
+                    "SALIDA", "HORAS_MARC_HHMM"]],
                 use_container_width=True, hide_index=True,
+                column_config={
+                    "FECHA": st.column_config.DateColumn("Fecha", format="DD/MM/YYYY"),
+                    "HORAS_MARC_HHMM": st.column_config.TextColumn("Horas marcación (hh:mm)"),
+                    "ENTRADA": st.column_config.TextColumn("Entrada"),
+                    "SALIDA": st.column_config.TextColumn("Salida"),
+                },
             )
 
 # --------------------------------------------------------------------------- #
@@ -355,7 +361,7 @@ with tab_condiciones:
                     st.session_state.tabla = core.aplicar_masivo(
                         st.session_state.tabla, "Refrigerio", False, mask=mask_g)
 
-            m4, m5 = st.columns(2)
+            m4, m5, m6 = st.columns(3)
             with m4:
                 st.markdown("**Descuento extra (h)**")
                 val = st.selectbox("Horas", [0.0, 1.0, 2.0, 3.0], key="desc_val",
@@ -364,6 +370,13 @@ with tab_condiciones:
                     st.session_state.tabla = core.aplicar_masivo(
                         st.session_state.tabla, "DescuentoExtra", float(val), mask=mask_g)
             with m5:
+                st.markdown("**Aumento extra (h)**")
+                vala = st.selectbox("Horas+", [0.0, 1.0, 2.0, 3.0], key="aum_val",
+                                    label_visibility="collapsed")
+                if st.button("Aplicar a todos", key="aum_all"):
+                    st.session_state.tabla = core.aplicar_masivo(
+                        st.session_state.tabla, "AumentoExtra", float(vala), mask=mask_g)
+            with m6:
                 st.markdown("**Jornada noche (para Teórico 12)**")
                 jn = st.selectbox("Jornada", opciones_noche, key="jn_val",
                                   label_visibility="collapsed")
@@ -377,9 +390,9 @@ with tab_condiciones:
         df = core.recalcular(st.session_state.tabla, cfg())
         sub = df[mask_g]
         cols_edit = [
-            "NOMBRES", "GRUPO", "TURNO", "ENTRADA", "SALIDA", "HORAS_MARCACION",
-            "Corrido", "Teorico12", "Refrigerio", "DescuentoExtra", "JornadaNoche",
-            "OBSERVACION", "TTHH_HHMM", "TTHH",
+            "NOMBRES", "GRUPO", "TURNO", "ENTRADA", "SALIDA", "HORAS_MARC_HHMM",
+            "Corrido", "Teorico12", "Refrigerio", "DescuentoExtra", "AumentoExtra",
+            "JornadaNoche", "TTHH_HHMM", "TTHH",
         ]
         edited = st.data_editor(
             sub[cols_edit],
@@ -392,23 +405,25 @@ with tab_condiciones:
                 "TURNO": st.column_config.TextColumn("Turno", disabled=True),
                 "ENTRADA": st.column_config.TextColumn("Entrada", disabled=True),
                 "SALIDA": st.column_config.TextColumn("Salida", disabled=True),
-                "HORAS_MARCACION": st.column_config.NumberColumn(
-                    "Hrs marcación", disabled=True, format="%.2f"),
+                "HORAS_MARC_HHMM": st.column_config.TextColumn(
+                    "Hrs marcación (hh:mm)", disabled=True),
                 "Corrido": st.column_config.CheckboxColumn("Corrido (C)"),
                 "Teorico12": st.column_config.CheckboxColumn("Teórico 12h"),
                 "Refrigerio": st.column_config.CheckboxColumn("Desc. refrig."),
                 "DescuentoExtra": st.column_config.SelectboxColumn(
                     "Desc. extra (h)", options=[0.0, 1.0, 2.0, 3.0]),
+                "AumentoExtra": st.column_config.SelectboxColumn(
+                    "Aum. extra (h)", options=[0.0, 1.0, 2.0, 3.0]),
                 "JornadaNoche": st.column_config.SelectboxColumn(
                     "Jornada noche", options=opciones_noche),
-                "OBSERVACION": st.column_config.TextColumn("Obs. original", disabled=True),
                 "TTHH_HHMM": st.column_config.TextColumn("TTHH (hh:mm)", disabled=True),
                 "TTHH": st.column_config.NumberColumn("TTHH (dec)", disabled=True, format="%.2f"),
             },
             key=f"editor_condiciones_{gsel}",
         )
         # Persiste cambios de los checks editables (alineado por índice)
-        for col in ["Corrido", "Teorico12", "Refrigerio", "DescuentoExtra", "JornadaNoche"]:
+        for col in ["Corrido", "Teorico12", "Refrigerio", "DescuentoExtra",
+                    "AumentoExtra", "JornadaNoche"]:
             st.session_state.tabla.loc[sub.index, col] = edited[col].values
         st.session_state.tabla = core.recalcular(st.session_state.tabla, cfg())
         persistir_subset(mask_g)  # comparte el avance (sólo este grupo en DB)
