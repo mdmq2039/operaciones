@@ -20,6 +20,8 @@ import json
 import os
 import secrets
 
+import db
+
 RUTA_BASE = os.path.dirname(os.path.abspath(__file__))
 ARCHIVO_USUARIOS = os.path.join(RUTA_BASE, "usuarios.json")
 
@@ -53,6 +55,14 @@ def usuarios_por_defecto() -> dict:
 
 
 def cargar_usuarios() -> dict:
+    # Backend Supabase si está disponible
+    if db.enabled():
+        users = db.users_load()
+        if not users:
+            users = usuarios_por_defecto()
+            db.users_save(users)
+        return users
+    # Respaldo local (offline)
     if not os.path.exists(ARCHIVO_USUARIOS):
         users = usuarios_por_defecto()
         guardar_usuarios(users)
@@ -67,8 +77,17 @@ def cargar_usuarios() -> dict:
 
 
 def guardar_usuarios(users: dict) -> None:
+    if db.enabled():
+        db.users_save(users)
+        return
     with open(ARCHIVO_USUARIOS, "w", encoding="utf-8") as f:
         json.dump(users, f, ensure_ascii=False, indent=2)
+
+
+def ensure_defaults() -> None:
+    """Crea los usuarios por defecto si aún no existe ninguno."""
+    if not cargar_usuarios():
+        guardar_usuarios(usuarios_por_defecto())
 
 
 # --------------------------------------------------------------------------- #
