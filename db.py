@@ -194,6 +194,13 @@ def _df_a_filas(df: pd.DataFrame) -> list[dict]:
     return filas
 
 
+def tareo_truncate() -> None:
+    """Vacía el tareo (botón Reiniciar del coordinador)."""
+    eng = get_engine()
+    with eng.begin() as cx:
+        cx.execute(text("TRUNCATE TABLE tareo RESTART IDENTITY"))
+
+
 def tareo_replace(df: pd.DataFrame) -> None:
     """Reemplaza todo el tareo (uso exclusivo del coordinador al 'Procesar')."""
     eng = get_engine()

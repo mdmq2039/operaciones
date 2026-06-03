@@ -21,6 +21,7 @@ import streamlit as st
 
 import tareo_core as core
 import auth
+import db
 
 st.set_page_config(
     page_title="Tareo de Operaciones - PECEPE",
@@ -50,10 +51,52 @@ st.markdown(
 # --------------------------------------------------------------------------- #
 #  Estado                                                                      #
 # --------------------------------------------------------------------------- #
+# Inicializa esquema y usuarios por defecto en Supabase (idempotente, una vez)
+if db.enabled() and "db_init" not in st.session_state:
+    db.init_schema()
+    auth.ensure_defaults()
+    st.session_state.db_init = True
+
 if "user" not in st.session_state:
     st.session_state.user = None
 if "cfg" not in st.session_state:
-    st.session_state.cfg = core.cargar_config()
+    st.session_state.cfg = None  # se carga tras definir los helpers
+
+
+def cargar_cfg_app() -> core.Config:
+    if db.enabled():
+        d = db.config_load()
+        return core.Config.from_dict(d) if d else core.Config()
+    return core.cargar_config()
+
+
+def guardar_cfg_app(c: core.Config) -> None:
+    if db.enabled():
+        db.config_save(c.to_dict())
+    else:
+        core.guardar_config(c)
+
+
+def cargar_estado_app():
+    return db.tareo_load() if db.enabled() else core.cargar_estado()
+
+
+def reemplazar_estado(df) -> None:
+    if db.enabled():
+        db.tareo_replace(df)
+    else:
+        core.guardar_estado(df)
+
+
+def borrar_estado_app() -> None:
+    if db.enabled():
+        db.tareo_truncate()
+    else:
+        core.borrar_estado()
+
+
+if st.session_state.cfg is None:
+    st.session_state.cfg = cargar_cfg_app()
 if "tabla" not in st.session_state:
     st.session_state.tabla = None
 
@@ -62,9 +105,14 @@ def cfg() -> core.Config:
     return st.session_state.cfg
 
 
-def persistir_tabla() -> None:
-    """Guarda el tareo compartido para que todos los supervisores lo vean."""
-    if st.session_state.tabla is not None:
+def persistir_subset(mask) -> None:
+    """Guarda el avance. En DB sólo actualiza las filas del grupo (no pisa a otros);
+    en local guarda toda la tabla."""
+    if st.session_state.tabla is None:
+        return
+    if db.enabled():
+        db.tareo_save_subset(st.session_state.tabla[mask])
+    else:
         core.guardar_estado(st.session_state.tabla)
 
 
@@ -99,7 +147,7 @@ ES_COORD = USER["rol"] == "coordinador"
 GRUPO_USER = USER.get("grupo")
 
 # Carga el tareo compartido en cada recarga (refleja el trabajo de otros)
-st.session_state.tabla = core.cargar_estado()
+st.session_state.tabla = cargar_estado_app()
 
 
 # --------------------------------------------------------------------------- #
@@ -154,7 +202,7 @@ with st.sidebar:
         c.producto = st.text_input("PRODUCTO", c.producto)
         c.zona = st.text_input("ZONA", str(c.zona))
         if st.button("💾 Guardar reglas para todos"):
-            core.guardar_config(c)
+            guardar_cfg_app(c)
             st.success("Reglas guardadas.")
         st.caption("Tope hora normal: 8 h · Tramo 25%: hasta 10 h · 35%: el resto.")
     else:
@@ -217,15 +265,16 @@ if tab_cargar is not None:
                         st.error("Selecciona o sube un archivo primero.")
                     else:
                         df_sis = core.cargar_tareo_sistema(fuente)
-                        st.session_state.tabla = core.construir_tabla_trabajo(df_sis, cfg())
-                        persistir_tabla()
+                        tabla_nueva = core.construir_tabla_trabajo(df_sis, cfg())
+                        reemplazar_estado(tabla_nueva)
+                        st.session_state.tabla = cargar_estado_app()
                         st.success(f"✅ Procesados {len(st.session_state.tabla)} registros. "
                                    "Los supervisores ya pueden trabajar sus grupos.")
                 except Exception as e:
                     st.exception(e)
         with col_r:
             if st.button("🗑️ Reiniciar tareo (borrar todo)"):
-                core.borrar_estado()
+                borrar_estado_app()
                 st.session_state.tabla = None
                 st.warning("Tareo reiniciado.")
 
@@ -358,7 +407,7 @@ with tab_condiciones:
         for col in ["Corrido", "Teorico12", "Refrigerio", "DescuentoExtra", "JornadaNoche"]:
             st.session_state.tabla.loc[sub.index, col] = edited[col].values
         st.session_state.tabla = core.recalcular(st.session_state.tabla, cfg())
-        persistir_tabla()  # comparte el avance con el coordinador y otros
+        persistir_subset(mask_g)  # comparte el avance (sólo este grupo en DB)
 
         total_tthh = st.session_state.tabla.loc[mask_g, "TTHH"].sum()
         st.success(f"TTHH del grupo **{gsel}**: {total_tthh:,.2f} h "
@@ -402,12 +451,12 @@ with tab_aprobacion:
             if st.button("✅ Aprobar grupo", type="primary"):
                 st.session_state.tabla = core.aplicar_masivo(
                     st.session_state.tabla, "Aprobado", True, mask=mask_g)
-                persistir_tabla()
+                persistir_subset(mask_g)
         with a2:
             if st.button("❌ Desaprobar grupo"):
                 st.session_state.tabla = core.aplicar_masivo(
                     st.session_state.tabla, "Aprobado", False, mask=mask_g)
-                persistir_tabla()
+                persistir_subset(mask_g)
         with a3:
             sub_t = st.session_state.tabla[mask_g]
             st.metric(f"Aprobados ({gsel})",
@@ -447,7 +496,7 @@ with tab_aprobacion:
             key=f"editor_aprobacion_{gsel}",
         )
         st.session_state.tabla.loc[sub.index, "Aprobado"] = edited["Aprobado"].values
-        persistir_tabla()
+        persistir_subset(mask_g)
 
 # --------------------------------------------------------------------------- #
 #  TAB 4: Reporte final (sólo coordinador)                                     #
