@@ -43,10 +43,30 @@ st.markdown(
     .sub {color:#5b6770;}
     .metric-card {background:#f1f5fb;border-radius:10px;padding:10px 14px;}
     div[data-testid="stDataFrame"] {border:1px solid #d9e1ec;border-radius:8px;}
+    .pie-copy {text-align:center; color:#8a949e; font-size:0.8rem;
+               margin-top:2.2rem; padding:0.6rem 0; border-top:1px solid #e6e9ee;}
     </style>
     """,
     unsafe_allow_html=True,
 )
+
+# Logo de la empresa (SVG, se ve nítido en cualquier pantalla)
+LOGO_SVG = (
+    "<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 360 96' height='{h}'>"
+    "<text x='0' y='72' font-family='Segoe UI, Arial, sans-serif' "
+    "font-weight='800' font-size='84' fill='#1F4E9B'>pecepe.</text></svg>"
+)
+
+
+def mostrar_logo(altura: int = 56) -> None:
+    st.markdown(LOGO_SVG.format(h=altura), unsafe_allow_html=True)
+
+
+def mostrar_pie() -> None:
+    st.markdown(
+        "<div class='pie-copy'>© APLICACIONES — DONET 2026</div>",
+        unsafe_allow_html=True,
+    )
 
 # --------------------------------------------------------------------------- #
 #  Estado                                                                      #
@@ -124,6 +144,7 @@ def persistir_subset(mask) -> None:
 #  Control de acceso (login)                                                   #
 # --------------------------------------------------------------------------- #
 if st.session_state.user is None:
+    mostrar_logo(64)
     st.markdown(
         '<div style="font-size:1.9rem;font-weight:800;color:#1f3864;">'
         '🕒 Tareo de Operaciones — PECEPE</div>', unsafe_allow_html=True)
@@ -143,6 +164,7 @@ if st.session_state.user is None:
         "Cada supervisor entra con su usuario y sólo verá **su grupo**. "
         "El coordinador ve y aprueba todos los grupos."
     )
+    mostrar_pie()
     st.stop()
 
 # Usuario autenticado
@@ -222,6 +244,7 @@ with st.sidebar:
 # --------------------------------------------------------------------------- #
 #  Encabezado                                                                  #
 # --------------------------------------------------------------------------- #
+mostrar_logo(48)
 st.markdown('<div class="titulo-app">🕒 Tareo de Operaciones — PECEPE</div>',
             unsafe_allow_html=True)
 st.markdown(
@@ -597,3 +620,8 @@ if tab_users is not None:
                     auth.eliminar(del_u)
                     st.warning(f"Usuario '{del_u}' eliminado.")
                     st.rerun()
+
+# --------------------------------------------------------------------------- #
+#  Pie de página (copyright)                                                   #
+# --------------------------------------------------------------------------- #
+mostrar_pie()
