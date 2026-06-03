@@ -78,7 +78,11 @@ def guardar_cfg_app(c: core.Config) -> None:
 
 
 def cargar_estado_app():
-    return db.tareo_load() if db.enabled() else core.cargar_estado()
+    df = db.tareo_load() if db.enabled() else core.cargar_estado()
+    if df is not None:
+        # Añade las columnas calculadas (TTHH, TTHH_HHMM, INICIO/SALIDA, tramos)
+        df = core.recalcular(df, st.session_state.cfg)
+    return df
 
 
 def reemplazar_estado(df) -> None:
