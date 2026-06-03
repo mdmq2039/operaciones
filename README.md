@@ -31,6 +31,22 @@ python -m streamlit run app.py
 Cuando inicie, muestra una **Network URL** (ej. `http://192.168.x.x:8501`).
 Abre esa dirección en el navegador del celular/tablet **conectado a la misma red Wi-Fi**.
 
+## ☁️ Base de datos y despliegue (Supabase + Render)
+
+El aplicativo usa **modo dual**:
+- Si existe la variable `DATABASE_URL` → guarda todo en **Supabase (PostgreSQL)**
+  (estado central; varios supervisores trabajan en simultáneo desde cualquier
+  dispositivo). Las tablas se crean solas al primer arranque.
+- Si no existe → respaldo en archivos locales (uso offline con el `.bat`).
+
+**Configuración local:** copia `.env.example` a `.env` y completa `DATABASE_URL`
+con la cadena de Supabase (Connection string → URI, reemplazando la contraseña).
+El `.env` **nunca** se sube al repositorio.
+
+**Despliegue en Render:** el servicio (https://operaciones-ysvc.onrender.com)
+está conectado a GitHub. En *Environment* se define `DATABASE_URL`. El arranque
+usa `render.yaml`. Ver detalles en [Informe.md](Informe.md).
+
 ## 🔐 Control de acceso (usuarios)
 
 Al abrir el aplicativo se pide **usuario y contraseña**. Hay dos roles:
