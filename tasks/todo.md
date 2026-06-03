@@ -1,4 +1,4 @@
-# Tareas: Supabase + Render
+# Tareas: Supabase + Render + Dashboard + WhatsApp
 
 ## Plan
 - [x] 1. Git local + `.gitignore` (con `.env`) + commit inicial
@@ -10,6 +10,13 @@
 - [x] 7. Archivos de deploy: `requirements.txt`, `render.yaml`, `.python-version`, `.env.example`
 - [x] 8. `Informe.md` + README + sección de revisión
 - [ ] 9. Push a GitHub (repo conectado a Render) — pendiente de URL y autenticación
+
+## Plan: Dashboard + WhatsApp
+- [ ] 10. Crear `dashboard_charts.py`: gráficos Plotly + helpers WhatsApp
+- [ ] 11. Agregar `plotly>=5.0` a `requirements.txt`
+- [ ] 12. Agregar pestaña `📊 Dashboard` en `app.py` (con filtros)
+- [ ] 13. Agregar pestaña `📱 Compartir` en `app.py` (WhatsApp wa.me links)
+- [ ] 14. Commit y push al branch de desarrollo
 
 ## Revisión
 

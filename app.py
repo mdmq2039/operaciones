@@ -22,6 +22,7 @@ import streamlit as st
 import tareo_core as core
 import auth
 import db
+import dashboard_charts as dash
 
 st.set_page_config(
     page_title="Tareo de Operaciones - PECEPE",
@@ -255,13 +256,14 @@ st.markdown(
 st.write("")
 
 if ES_COORD:
-    tab_cargar, tab_condiciones, tab_aprobacion, tab_reporte, tab_users = st.tabs(
+    (tab_cargar, tab_condiciones, tab_aprobacion, tab_reporte,
+     tab_dashboard, tab_compartir, tab_users) = st.tabs(
         ["📥 1. Cargar", "🧮 2. Condiciones / TTHH", "✅ 3. Aprobación",
-         "📤 4. Reporte final", "👥 Usuarios"]
+         "📤 4. Reporte final", "📊 Dashboard", "📱 Compartir", "👥 Usuarios"]
     )
 else:
-    tab_condiciones, tab_aprobacion = st.tabs(
-        ["🧮 Condiciones / TTHH", "✅ Aprobación"]
+    tab_condiciones, tab_aprobacion, tab_dashboard, tab_compartir = st.tabs(
+        ["🧮 Condiciones / TTHH", "✅ Aprobación", "📊 Dashboard", "📱 Compartir"]
     )
     tab_cargar = tab_reporte = tab_users = None
 
@@ -620,6 +622,209 @@ if tab_users is not None:
                     auth.eliminar(del_u)
                     st.warning(f"Usuario '{del_u}' eliminado.")
                     st.rerun()
+
+# --------------------------------------------------------------------------- #
+#  TAB Dashboard (coordinador y supervisor)                                    #
+# --------------------------------------------------------------------------- #
+with tab_dashboard:
+    if st.session_state.tabla is None:
+        st.info("Primero carga y procesa el tareo en la pestaña 1.")
+    else:
+        df_dash = core.recalcular(st.session_state.tabla, cfg())
+
+        # --- Filtros -------------------------------------------------------- #
+        st.markdown("### 🔍 Filtros del Dashboard")
+        grupos_disp_dash = sorted(df_dash["GRUPO"].unique().tolist(), key=str)
+        col_f1, col_f2 = st.columns([3, 1])
+        with col_f1:
+            if ES_COORD:
+                grupos_sel = st.multiselect(
+                    "Grupos a visualizar", grupos_disp_dash,
+                    default=grupos_disp_dash, key="dash_grupos")
+            else:
+                grupos_sel = [str(GRUPO_USER)]
+                st.info(f"Visualizando grupo: **{GRUPO_USER}**")
+        with col_f2:
+            turno_sel = st.selectbox(
+                "Turno", ["Todos", "DIA", "NOCHE"], key="dash_turno")
+
+        mask_dash = df_dash["GRUPO"].isin(grupos_sel)
+        if turno_sel != "Todos":
+            mask_dash &= df_dash["TURNO"] == turno_sel
+        df_f = df_dash[mask_dash]
+
+        if len(df_f) == 0:
+            st.warning("Sin datos para los filtros seleccionados.")
+        else:
+            # --- KPIs generales --------------------------------------------- #
+            st.divider()
+            st.markdown("### 📈 Indicadores Generales")
+            k1, k2, k3, k4, k5 = st.columns(5)
+            k1.metric("👥 Registros", len(df_f))
+            k2.metric("⏱️ TTHH Total", f"{df_f['TTHH'].sum():,.1f} h")
+            k3.metric("📈 Hora 25%", f"{df_f['hora 25'].sum():,.1f} h")
+            k4.metric("📈 Hora 35%", f"{df_f['hora 35'].sum():,.1f} h")
+            pct_apr = (f"{df_f['Aprobado'].mean()*100:.0f}%"
+                       if "Aprobado" in df_f.columns else "—")
+            k5.metric("✅ Aprobado", pct_apr)
+
+            # --- Sección A: Tareo Original ----------------------------------- #
+            st.divider()
+            st.markdown(
+                "### 📥 Tareo Original — Distribución y Condiciones  \n"
+                "<small style='color:#5b6770;'>Pasa el cursor sobre los gráficos "
+                "para ver detalle · Usa el ícono 📷 para descargar como PNG</small>",
+                unsafe_allow_html=True,
+            )
+            a1, a2 = st.columns(2)
+            with a1:
+                st.plotly_chart(
+                    dash.graf_turnos(df_f),
+                    use_container_width=True,
+                    config=dash._PNG_CFG,
+                )
+            with a2:
+                st.plotly_chart(
+                    dash.graf_registros_grupo(df_f),
+                    use_container_width=True,
+                    config=dash._PNG_CFG,
+                )
+            a3, a4 = st.columns(2)
+            with a3:
+                st.plotly_chart(
+                    dash.graf_condiciones(df_f),
+                    use_container_width=True,
+                    config=dash._PNG_CFG,
+                )
+            with a4:
+                st.plotly_chart(
+                    dash.graf_horas_marc_grupo(df_f),
+                    use_container_width=True,
+                    config=dash._PNG_CFG,
+                )
+
+            # --- Sección B: Tareo Final -------------------------------------- #
+            st.divider()
+            st.markdown("### 📤 Tareo Final — TTHH y Aprobación")
+            b1, b2 = st.columns(2)
+            with b1:
+                st.plotly_chart(
+                    dash.graf_tthh_grupo(df_f),
+                    use_container_width=True,
+                    config=dash._PNG_CFG,
+                )
+            with b2:
+                st.plotly_chart(
+                    dash.graf_dist_horas(df_f),
+                    use_container_width=True,
+                    config=dash._PNG_CFG,
+                )
+            if "Aprobado" in df_f.columns:
+                st.plotly_chart(
+                    dash.graf_aprobacion(df_f),
+                    use_container_width=True,
+                    config=dash._PNG_CFG,
+                )
+
+
+# --------------------------------------------------------------------------- #
+#  TAB Compartir por WhatsApp                                                  #
+# --------------------------------------------------------------------------- #
+with tab_compartir:
+    st.subheader("📱 Compartir por WhatsApp")
+    st.caption(
+        "Genera mensajes formateados o descarga archivos para compartir "
+        "el tareo y el reporte de operaciones directamente desde WhatsApp."
+    )
+
+    if st.session_state.tabla is None:
+        st.info("Primero carga y procesa el tareo en la pestaña 1.")
+    else:
+        df_wa = core.recalcular(st.session_state.tabla, cfg())
+        if not ES_COORD:
+            df_wa = df_wa[df_wa["GRUPO"].astype(str) == str(GRUPO_USER)]
+
+        # --- Resumen del tareo ---------------------------------------------- #
+        with st.expander("📋 Resumen General del Tareo", expanded=True):
+            titulo_wa = (
+                "RESUMEN TAREO"
+                if ES_COORD else f"TAREO — GRUPO {GRUPO_USER}"
+            )
+            txt_resumen = dash.texto_resumen(df_wa, titulo_wa)
+            st.text_area(
+                "Vista previa del mensaje:",
+                txt_resumen, height=280, disabled=True,
+                key="wa_resumen_prev",
+            )
+            st.markdown(
+                dash.boton_wa_html(
+                    dash.url_wa(txt_resumen),
+                    "💬 Abrir WhatsApp — Resumen Tareo",
+                ),
+                unsafe_allow_html=True,
+            )
+            st.caption(
+                "El botón abre WhatsApp Web (o la app en móvil) con el "
+                "mensaje listo. Elige el contacto o grupo y envía."
+            )
+
+        # --- Reporte de operaciones (solo coordinador) ---------------------- #
+        if ES_COORD:
+            with st.expander("📤 Reporte de Operaciones Final"):
+                rep_wa = core.generar_reporte_operaciones(
+                    st.session_state.tabla, cfg(), solo_aprobados=True)
+                if len(rep_wa) == 0:
+                    st.warning(
+                        "No hay registros aprobados aún. "
+                        "Los supervisores deben aprobar sus grupos en la pestaña 3.")
+                else:
+                    txt_rep = dash.texto_reporte_final(rep_wa)
+                    st.text_area(
+                        "Vista previa:", txt_rep, height=280, disabled=True,
+                        key="wa_rep_prev",
+                    )
+                    st.markdown(
+                        dash.boton_wa_html(
+                            dash.url_wa(txt_rep),
+                            "💬 Abrir WhatsApp — Reporte Final",
+                        ),
+                        unsafe_allow_html=True,
+                    )
+
+        # --- Archivos para adjuntar ----------------------------------------- #
+        with st.expander("📁 Descargar archivos para adjuntar en WhatsApp"):
+            st.caption(
+                "Descarga los archivos Excel y adjúntalos directamente "
+                "en tu conversación de WhatsApp."
+            )
+            xls_tareo = core.exportar_tareo_trabajado(df_wa, cfg())
+            st.download_button(
+                "⬇️ Descargar Tareo Trabajado (.xlsx)",
+                data=xls_tareo,
+                file_name="REPORTE_TAREO_SISTEMA.xlsx",
+                mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+            )
+            if ES_COORD:
+                rep_xl = core.generar_reporte_operaciones(
+                    st.session_state.tabla, cfg(), solo_aprobados=True)
+                if len(rep_xl) > 0:
+                    st.download_button(
+                        "⬇️ Descargar Reporte Final (.xlsx)",
+                        data=core.exportar_excel(rep_xl),
+                        file_name="REPORTE_OPERACIONES.xlsx",
+                        mime=(
+                            "application/vnd.openxmlformats-officedocument"
+                            ".spreadsheetml.sheet"
+                        ),
+                    )
+            st.info(
+                "💡 **Para compartir gráficos en WhatsApp:** Ve a la pestaña "
+                "📊 Dashboard, pasa el cursor sobre cualquier gráfico y "
+                "haz clic en el ícono de cámara 📷 (esquina superior derecha) "
+                "para guardar el gráfico como imagen PNG. "
+                "Luego adjunta el PNG en WhatsApp."
+            )
+
 
 # --------------------------------------------------------------------------- #
 #  Pie de página (copyright)                                                   #
