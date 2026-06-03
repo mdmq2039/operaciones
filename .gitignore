@@ -1,0 +1,27 @@
+# Seguridad: credenciales y secretos (NUNCA subir al repo)
+.env
+.env.*
+!.env.example
+.streamlit/secrets.toml
+
+# Estado local (se reemplaza por la base de datos Supabase)
+estado_tareo.pkl
+usuarios.json
+config.json
+
+# Temporales de Excel
+~$*.xlsx
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+.venv/
+venv/
+env/
+
+# Editores / SO
+.vscode/
+.DS_Store
+_log.txt
+_l.txt
