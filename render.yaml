@@ -1,0 +1,15 @@
+# Blueprint de Render para el Aplicativo de Tareo de Operaciones (Streamlit).
+# Render ejecuta build + start. La variable DATABASE_URL se configura en el
+# dashboard de Render (Environment), nunca en el repositorio.
+services:
+  - type: web
+    name: operaciones
+    runtime: python
+    plan: free
+    buildCommand: pip install -r requirements.txt
+    startCommand: streamlit run app.py --server.port $PORT --server.address 0.0.0.0 --server.headless true
+    envVars:
+      - key: DATABASE_URL
+        sync: false        # se define manualmente en el dashboard (secreto)
+      - key: PYTHON_VERSION
+        value: 3.12.7
