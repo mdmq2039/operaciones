@@ -47,7 +47,7 @@ def _nuevo_registro(password: str, rol: str, grupo) -> dict:
 def usuarios_por_defecto() -> dict:
     """Coordinador + un supervisor por grupo, con claves iniciales sencillas."""
     users = {
-        "coordinador": _nuevo_registro("coord123", "coordinador", None),
+        "donet": _nuevo_registro("donet2026", "coordinador", None),
     }
     for g in GRUPOS_POR_DEFECTO:
         users[f"sup_{g}".lower()] = _nuevo_registro(f"{g}123", "supervisor", g)
