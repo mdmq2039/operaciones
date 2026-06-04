@@ -3,6 +3,8 @@ dashboard_charts.py
 ===================
 Gráficos Plotly y helpers de WhatsApp para el Dashboard del Tareo PECEPE.
 """
+import calendar as _cal
+import datetime as _dt
 import urllib.parse
 
 import pandas as pd
@@ -281,6 +283,40 @@ MESES_ES = {
     9: "Septiembre", 10: "Octubre", 11: "Noviembre", 12: "Diciembre",
 }
 
+DIAS_ES = ["Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado", "Domingo"]
+
+
+def semanas_del_mes(año: int, mes: int) -> list:
+    """Semanas ISO (lun–dom) que tienen al menos un día en el mes dado."""
+    primer = _dt.date(año, mes, 1)
+    ultimo = _dt.date(año, mes, _cal.monthrange(año, mes)[1])
+    semanas, seen = [], set()
+    d = primer
+    while d <= ultimo:
+        iso_year, iso_week, _ = d.isocalendar()
+        clave = (iso_year, iso_week)
+        if clave not in seen:
+            seen.add(clave)
+            lun = d - _dt.timedelta(days=d.weekday())
+            dom = lun + _dt.timedelta(days=6)
+            semanas.append({
+                "iso_year": iso_year,
+                "num":      iso_week,
+                "label":    f"S{iso_week:02d} ({lun.strftime('%d/%m')}–{dom.strftime('%d/%m')})",
+                "lunes":    lun,
+                "domingo":  dom,
+                "dias": [
+                    {
+                        "nombre": DIAS_ES[i],
+                        "fecha":  lun + _dt.timedelta(days=i),
+                        "en_mes": (lun + _dt.timedelta(days=i)).month == mes,
+                    }
+                    for i in range(7)
+                ],
+            })
+        d += _dt.timedelta(days=1)
+    return semanas
+
 
 def agregar_cols_fecha(df: pd.DataFrame) -> pd.DataFrame:
     """Añade columnas _AÑO, _MES_NUM, _MES_NOMBRE, _SEMANA_NUM, _SEMANA_LABEL."""
@@ -353,6 +389,120 @@ def graf_tthh_semana(df: pd.DataFrame) -> go.Figure:
         legend=dict(orientation="h", y=1.08, x=0.5, xanchor="center"),
     )
     return _layout(fig, "📊 TTHH por Semana del Año (Normal · 25% · 35%)", h=370)
+
+
+def generar_pdf_resumen(df: pd.DataFrame, titulo: str = "TAREO PECEPE") -> bytes:
+    """Genera un PDF resumido del tareo o reporte (para descargar y compartir)."""
+    from io import BytesIO
+    from reportlab.lib import colors as rc
+    from reportlab.lib.pagesizes import A4
+    from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
+    from reportlab.lib.units import cm
+    from reportlab.platypus import (
+        SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle)
+
+    buf = BytesIO()
+    doc = SimpleDocTemplate(buf, pagesize=A4,
+                            topMargin=2 * cm, bottomMargin=2 * cm,
+                            leftMargin=2 * cm, rightMargin=2 * cm)
+    sty = getSampleStyleSheet()
+    azul = rc.HexColor("#1F4E9B")
+
+    h1 = ParagraphStyle("H1", parent=sty["Heading1"], textColor=azul,
+                         fontSize=18, spaceAfter=4)
+    h2 = ParagraphStyle("H2", parent=sty["Heading2"], textColor=azul,
+                         fontSize=13, spaceAfter=6, spaceBefore=14)
+    ft = ParagraphStyle("FT", parent=sty["Normal"], textColor=rc.grey,
+                         fontSize=8, alignment=1)
+
+    # Detecta si es tareo o reporte final por nombres de columnas
+    col_horas  = "horas total" if "horas total" in df.columns else "TTHH"
+    col_grupo  = "AREA"        if "AREA"        in df.columns else "GRUPO"
+    col_nombre = "NOMBRES"     if "NOMBRES"     in df.columns else None
+
+    total = len(df)
+    dia   = int((df["TURNO"] == "DIA").sum())   if "TURNO"    in df.columns else 0
+    noche = int((df["TURNO"] == "NOCHE").sum()) if "TURNO"    in df.columns else 0
+    tthh  = float(df[col_horas].sum())          if col_horas  in df.columns else 0.0
+    h25   = float(df["hora 25"].sum())          if "hora 25"  in df.columns else 0.0
+    h35   = float(df["hora 35"].sum())          if "hora 35"  in df.columns else 0.0
+    apro  = int(df["Aprobado"].sum())           if "Aprobado" in df.columns else 0
+
+    _bg   = [rc.HexColor("#EEF2FF"), rc.white]
+    _grid = rc.HexColor("#C7D2E8")
+
+    def _tbl(data, widths):
+        t = Table(data, colWidths=widths)
+        t.setStyle(TableStyle([
+            ("BACKGROUND",     (0, 0), (-1,  0),  azul),
+            ("TEXTCOLOR",      (0, 0), (-1,  0),  rc.white),
+            ("FONTNAME",       (0, 0), (-1,  0),  "Helvetica-Bold"),
+            ("FONTNAME",       (0, 1), ( 0, -1),  "Helvetica-Bold"),
+            ("FONTSIZE",       (0, 0), (-1, -1),  11),
+            ("ALIGN",          (1, 0), (-1, -1),  "CENTER"),
+            ("ROWBACKGROUNDS", (0, 1), (-1, -1),  _bg),
+            ("GRID",           (0, 0), (-1, -1),  0.5, _grid),
+            ("TOPPADDING",     (0, 0), (-1, -1),  7),
+            ("BOTTOMPADDING",  (0, 0), (-1, -1),  7),
+        ]))
+        return t
+
+    story = [
+        Paragraph("PECEPE – Tareo de Operaciones", h1),
+        Paragraph(titulo, sty["Heading2"]),
+        Paragraph(f"Generado: {pd.Timestamp.now().strftime('%d/%m/%Y %H:%M')}",
+                  sty["Normal"]),
+        Spacer(1, 0.5 * cm),
+        _tbl([
+            ["Indicador",     "Valor"],
+            ["Total Registros", str(total)],
+            ["Turno DIA",       str(dia)],
+            ["Turno NOCHE",     str(noche)],
+            ["Horas Total",     f"{tthh:.2f} h"],
+            ["Hora 25%",        f"{h25:.2f} h"],
+            ["Hora 35%",        f"{h35:.2f} h"],
+            ["Aprobados",       f"{apro} / {total}"],
+        ], [9 * cm, 6 * cm]),
+    ]
+
+    if col_grupo in df.columns and col_horas in df.columns and total > 0:
+        story.append(Paragraph("Detalle por Grupo", h2))
+        cnt_col = col_nombre if col_nombre and col_nombre in df.columns else col_horas
+        agg = df.groupby(col_grupo).agg(n=(cnt_col, "count"),
+                                         hh=(col_horas, "sum")).reset_index()
+        if "hora 25" in df.columns:
+            agg = agg.join(df.groupby(col_grupo)["hora 25"].sum().rename("v25"),
+                           on=col_grupo)
+        else:
+            agg["v25"] = 0.0
+        if "hora 35" in df.columns:
+            agg = agg.join(df.groupby(col_grupo)["hora 35"].sum().rename("v35"),
+                           on=col_grupo)
+        else:
+            agg["v35"] = 0.0
+
+        gdata = [["Grupo", "Personas", "Horas (h)", "Hora 25%", "Hora 35%"]]
+        for _, r in agg.iterrows():
+            gdata.append([str(r[col_grupo]), str(int(r["n"])),
+                          f"{r['hh']:.1f}", f"{r['v25']:.1f}", f"{r['v35']:.1f}"])
+        gt = Table(gdata, colWidths=[3 * cm, 3 * cm, 3.5 * cm, 3.5 * cm, 3 * cm])
+        gt.setStyle(TableStyle([
+            ("BACKGROUND",     (0, 0), (-1,  0),  azul),
+            ("TEXTCOLOR",      (0, 0), (-1,  0),  rc.white),
+            ("FONTNAME",       (0, 0), (-1,  0),  "Helvetica-Bold"),
+            ("FONTSIZE",       (0, 0), (-1, -1),  10),
+            ("ALIGN",          (1, 0), (-1, -1),  "CENTER"),
+            ("ROWBACKGROUNDS", (0, 1), (-1, -1),  _bg),
+            ("GRID",           (0, 0), (-1, -1),  0.5, _grid),
+            ("TOPPADDING",     (0, 0), (-1, -1),  6),
+            ("BOTTOMPADDING",  (0, 0), (-1, -1),  6),
+        ]))
+        story.append(gt)
+
+    story += [Spacer(1, 1 * cm),
+              Paragraph("PECEPE – App Tareo de Operaciones – DONET 2026", ft)]
+    doc.build(story)
+    return buf.getvalue()
 
 
 def url_wa(texto: str) -> str:

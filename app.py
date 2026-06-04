@@ -284,6 +284,53 @@ else:
 if tab_cargar is not None:
     with tab_cargar:
         st.subheader("Cargar el archivo del sistema de asistencia")
+
+        # --- Selector de periodo (año / mes / semana / días) ---------------- #
+        with st.expander("📅 Periodo de trabajo", expanded=True):
+            _ahora = pd.Timestamp.now()
+            _años  = list(range(2024, _ahora.year + 2))
+            _pc1, _pc2 = st.columns(2)
+            with _pc1:
+                _año_per = st.selectbox(
+                    "Año", _años,
+                    index=_años.index(_ahora.year),
+                    key="per_anio")
+            with _pc2:
+                _mes_per = st.selectbox(
+                    "Mes", list(range(1, 13)),
+                    format_func=lambda m: dash.MESES_ES[m],
+                    index=_ahora.month - 1,
+                    key="per_mes")
+
+            _semanas   = dash.semanas_del_mes(_año_per, _mes_per)
+            _sem_lbls  = [s["label"] for s in _semanas]
+            _sem_def   = 0
+            if _año_per == _ahora.year and _mes_per == _ahora.month:
+                _iso_now = _ahora.isocalendar()[1]
+                for _i, _s in enumerate(_semanas):
+                    if _s["num"] == _iso_now:
+                        _sem_def = _i
+                        break
+
+            _sem_sel_lbl = st.selectbox(
+                "Semana ISO", _sem_lbls, index=_sem_def, key="per_semana")
+            _sem_sel = _semanas[_sem_lbls.index(_sem_sel_lbl)]
+
+            st.markdown(f"**Días de la semana {_sem_sel['label']}:**")
+            _cols_d = st.columns(7)
+            for _col_d, _dia in zip(_cols_d, _sem_sel["dias"]):
+                _bg = "#1F4E9B" if _dia["en_mes"] else "#E5E7EB"
+                _fc = "#FFFFFF" if _dia["en_mes"] else "#6B7280"
+                _col_d.markdown(
+                    f'<div style="background:{_bg};color:{_fc};border-radius:8px;'
+                    f'padding:8px 4px;text-align:center;">'
+                    f'<b style="font-size:0.72rem">{_dia["nombre"][:3].upper()}</b>'
+                    f'<br><span style="font-size:0.85rem">'
+                    f'{_dia["fecha"].strftime("%d/%m")}</span></div>',
+                    unsafe_allow_html=True,
+                )
+
+        st.write("")
         archivo = st.file_uploader(
             "Sube el archivo de carga (sistema de asistencia)", type=["xlsx", "xls"]
         )
@@ -966,6 +1013,66 @@ with tab_compartir:
                 "para guardar el gráfico como imagen PNG. "
                 "Luego adjunta el PNG en WhatsApp."
             )
+
+        # --- PDF para compartir (PC / tablet / celular) --------------------- #
+        with st.expander("📄 Compartir PDF — PC · Tablet · Celular", expanded=False):
+            st.markdown(
+                "Genera un PDF resumido y descárgalo para adjuntarlo en WhatsApp "
+                "desde cualquier dispositivo."
+            )
+            _titulo_pdf = ("RESUMEN TAREO" if ES_COORD
+                           else f"TAREO — GRUPO {GRUPO_USER}")
+            _pdf_bytes = dash.generar_pdf_resumen(df_wa, _titulo_pdf)
+            st.download_button(
+                "⬇️ Descargar PDF — Resumen del Tareo",
+                data=_pdf_bytes,
+                file_name="tareo_pecepe.pdf",
+                mime="application/pdf",
+                key="dl_pdf_resumen",
+            )
+            if ES_COORD:
+                _rep_pdf = core.generar_reporte_operaciones(
+                    st.session_state.tabla, cfg(), solo_aprobados=True)
+                if len(_rep_pdf) > 0:
+                    _pdf_rep = dash.generar_pdf_resumen(
+                        _rep_pdf, "REPORTE OPERACIONES FINAL")
+                    st.download_button(
+                        "⬇️ Descargar PDF — Reporte Final",
+                        data=_pdf_rep,
+                        file_name="reporte_operaciones.pdf",
+                        mime="application/pdf",
+                        key="dl_pdf_reporte",
+                    )
+
+            st.divider()
+            _tab_pc, _tab_mov = st.tabs(
+                ["💻 PC – WhatsApp Web", "📱 Celular / Tablet"])
+            with _tab_pc:
+                st.markdown(
+                    "**Pasos para compartir el PDF desde la computadora:**\n"
+                    "1. Haz clic en **Descargar PDF** (arriba) → "
+                    "se guarda en tu carpeta *Descargas*\n"
+                    "2. Abre **WhatsApp Web** en tu navegador\n"
+                    "3. Selecciona la conversación o grupo\n"
+                    "4. Haz clic en el ícono 📎 **(adjuntar)** en la barra inferior\n"
+                    "5. Elige **Documento** y selecciona el PDF descargado\n"
+                    "6. Envía el mensaje"
+                )
+            with _tab_mov:
+                st.markdown(
+                    "**Pasos para compartir el PDF desde celular o tablet:**\n\n"
+                    "**Opción A — desde WhatsApp:**\n"
+                    "1. Toca **Descargar PDF** (arriba) → "
+                    "el archivo se guarda en *Descargas*\n"
+                    "2. Abre WhatsApp → conversación o grupo\n"
+                    "3. Toca el ícono **+** o 📎 → **Documento**\n"
+                    "4. Busca el PDF en *Descargas* → envía\n\n"
+                    "**Opción B — compartir directo desde Descargas:**\n"
+                    "1. Descarga el PDF con el botón de arriba\n"
+                    "2. Abre la app **Archivos** o **Descargas** del celular\n"
+                    "3. Mantén presionado el PDF → toca **Compartir**\n"
+                    "4. Elige **WhatsApp** → selecciona contacto o grupo → envía"
+                )
 
 
 # --------------------------------------------------------------------------- #
