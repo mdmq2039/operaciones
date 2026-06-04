@@ -53,7 +53,7 @@ st.markdown(
 
 # Logo de la empresa (SVG, se ve nítido en cualquier pantalla)
 LOGO_SVG = (
-    "<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 360 96' height='{h}'>"
+    "<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 480 96' height='{h}'>"
     "<text x='0' y='72' font-family='Segoe UI, Arial, sans-serif' "
     "font-weight='800' font-size='84' fill='#1F4E9B'>pecepe.</text></svg>"
 )
