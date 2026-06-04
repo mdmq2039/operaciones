@@ -325,6 +325,22 @@ if tab_cargar is not None:
             c2.metric("Turno NOCHE", int((df["TURNO"] == "NOCHE").sum()))
             c3.metric("Corrido (C)", int(df["Corrido"].sum()))
             c4.metric("Teórico 12 h", int(df["Teorico12"].sum()))
+            # Resumen semanal en tab Cargar
+            df_sem_c = dash.agregar_cols_fecha(df)
+            df_sem_c = df_sem_c.dropna(subset=["_SEMANA_NUM"])
+            if not df_sem_c.empty:
+                sem_tbl = df_sem_c.groupby(
+                    ["_AÑO", "_SEMANA_NUM", "_SEMANA_LABEL"]
+                ).agg(
+                    Personas=("NOMBRES", "count"),
+                    DIA=("TURNO", lambda x: (x == "DIA").sum()),
+                    NOCHE=("TURNO", lambda x: (x == "NOCHE").sum()),
+                ).reset_index().sort_values(["_AÑO", "_SEMANA_NUM"])
+                sem_tbl = sem_tbl.rename(columns={"_SEMANA_LABEL": "Semana"})[
+                    ["Semana", "Personas", "DIA", "NOCHE"]]
+                with st.expander("📅 Resumen por semana del año", expanded=False):
+                    st.dataframe(sem_tbl, use_container_width=True, hide_index=True)
+
             st.dataframe(
                 df[["NOMBRES", "GRUPO", "SERVICE", "FECHA", "TURNO", "ENTRADA",
                     "SALIDA", "HORAS_MARC_HHMM"]],
@@ -578,6 +594,38 @@ if tab_reporte is not None:
                 r3.metric("Hora 25%", f"{rep['hora 25'].sum():,.1f}")
                 r4.metric("Hora 35%", f"{rep['hora 35'].sum():,.1f}")
 
+                # Resumen semanal en tab Reporte Final
+                if "FECHA" in rep.columns:
+                    df_sem_r = dash.agregar_cols_fecha(rep)
+                    df_sem_r = df_sem_r.dropna(subset=["_SEMANA_NUM"])
+                    if not df_sem_r.empty:
+                        sem_rep = df_sem_r.groupby(
+                            ["_AÑO", "_SEMANA_NUM", "_SEMANA_LABEL"]
+                        ).agg(
+                            Registros=("NOMBRES", "count"),
+                            TTHH=("horas total", "sum"),
+                            Hora_Normal=("hora normal", "sum"),
+                            Hora_25=("hora 25", "sum"),
+                            Hora_35=("hora 35", "sum"),
+                        ).reset_index().sort_values(["_AÑO", "_SEMANA_NUM"])
+                        sem_rep = sem_rep.rename(columns={
+                            "_SEMANA_LABEL": "Semana",
+                            "Hora_Normal": "Hora Normal",
+                            "Hora_25": "Hora 25%",
+                            "Hora_35": "Hora 35%",
+                        })[["Semana", "Registros", "TTHH",
+                            "Hora Normal", "Hora 25%", "Hora 35%"]]
+                        with st.expander("📅 Resumen por semana del año", expanded=False):
+                            st.dataframe(
+                                sem_rep.style.format({
+                                    "TTHH": "{:.2f}",
+                                    "Hora Normal": "{:.2f}",
+                                    "Hora 25%": "{:.2f}",
+                                    "Hora 35%": "{:.2f}",
+                                }),
+                                use_container_width=True, hide_index=True,
+                            )
+
                 st.dataframe(rep, use_container_width=True, hide_index=True)
 
                 xls = core.exportar_excel(rep)
@@ -661,10 +709,41 @@ with tab_dashboard:
             turno_sel = st.selectbox(
                 "Turno", ["Todos", "DIA", "NOCHE"], key="dash_turno")
 
-        mask_dash = df_dash["GRUPO"].isin(grupos_sel)
+        # --- Filtros de fecha / semana ISO --------------------------------- #
+        df_dash_f = dash.agregar_cols_fecha(df_dash)
+        años_disp = sorted(df_dash_f["_AÑO"].dropna().unique().tolist())
+        col_f3, col_f4, col_f5 = st.columns(3)
+        with col_f3:
+            año_sel = st.selectbox(
+                "Año", ["Todos"] + [int(a) for a in años_disp], key="dash_anio")
+        with col_f4:
+            meses_disp = sorted(
+                df_dash_f["_MES_NUM"].dropna().unique().tolist())
+            meses_opts = [dash.MESES_ES.get(int(m), str(m)) for m in meses_disp]
+            meses_sel_names = st.multiselect(
+                "Mes", meses_opts, default=meses_opts, key="dash_meses")
+            meses_sel_nums = [
+                k for k, v in dash.MESES_ES.items() if v in meses_sel_names]
+        with col_f5:
+            sems_disp = (
+                df_dash_f[df_dash_f["_SEMANA_LABEL"] != ""]["_SEMANA_LABEL"]
+                .drop_duplicates()
+                .sort_values()
+                .tolist()
+            )
+            sems_sel = st.multiselect(
+                "Semana ISO", sems_disp, default=sems_disp, key="dash_semanas")
+
+        mask_dash = df_dash_f["GRUPO"].isin(grupos_sel)
         if turno_sel != "Todos":
-            mask_dash &= df_dash["TURNO"] == turno_sel
-        df_f = df_dash[mask_dash]
+            mask_dash &= df_dash_f["TURNO"] == turno_sel
+        if año_sel != "Todos":
+            mask_dash &= df_dash_f["_AÑO"] == int(año_sel)
+        if meses_sel_nums:
+            mask_dash &= df_dash_f["_MES_NUM"].isin(meses_sel_nums)
+        if sems_sel:
+            mask_dash &= df_dash_f["_SEMANA_LABEL"].isin(sems_sel)
+        df_f = df_dash_f[mask_dash]
 
         if len(df_f) == 0:
             st.warning("Sin datos para los filtros seleccionados.")
@@ -737,6 +816,56 @@ with tab_dashboard:
                     dash.graf_aprobacion(df_f),
                     use_container_width=True,
                     config=dash._PNG_CFG,
+                )
+
+            # --- Sección C: Análisis Temporal por Semana -------------------- #
+            st.divider()
+            st.markdown("### 📅 Análisis Temporal — Por Semana del Año")
+            if "_SEMANA_NUM" not in df_f.columns or df_f["_SEMANA_NUM"].isna().all():
+                st.info("Sin columna FECHA con fechas válidas para el análisis semanal.")
+            else:
+                c1, c2 = st.columns(2)
+                with c1:
+                    st.plotly_chart(
+                        dash.graf_registros_semana(df_f),
+                        use_container_width=True,
+                        config=dash._PNG_CFG,
+                    )
+                with c2:
+                    st.plotly_chart(
+                        dash.graf_tthh_semana(df_f),
+                        use_container_width=True,
+                        config=dash._PNG_CFG,
+                    )
+                # Tabla resumen semanal
+                df_sem = df_f.dropna(subset=["_SEMANA_NUM"]).copy()
+                resumen_sem = df_sem.groupby(
+                    ["_AÑO", "_SEMANA_NUM", "_SEMANA_LABEL"]
+                ).agg(
+                    Personas=("NOMBRES", "count"),
+                    DIA=("TURNO", lambda x: (x == "DIA").sum()),
+                    NOCHE=("TURNO", lambda x: (x == "NOCHE").sum()),
+                    TTHH=("TTHH", "sum"),
+                    Hora_Normal=("hora normal", "sum"),
+                    Hora_25=("hora 25", "sum"),
+                    Hora_35=("hora 35", "sum"),
+                ).reset_index().sort_values(["_AÑO", "_SEMANA_NUM"])
+                resumen_sem = resumen_sem.rename(columns={
+                    "_SEMANA_LABEL": "Semana",
+                    "Hora_Normal": "Hora Normal",
+                    "Hora_25": "Hora 25%",
+                    "Hora_35": "Hora 35%",
+                })[["Semana", "Personas", "DIA", "NOCHE",
+                    "TTHH", "Hora Normal", "Hora 25%", "Hora 35%"]]
+                st.markdown("#### Resumen por Semana")
+                st.dataframe(
+                    resumen_sem.style.format({
+                        "TTHH": "{:.2f}",
+                        "Hora Normal": "{:.2f}",
+                        "Hora 25%": "{:.2f}",
+                        "Hora 35%": "{:.2f}",
+                    }),
+                    use_container_width=True, hide_index=True,
                 )
 
 

@@ -271,6 +271,90 @@ def texto_reporte_final(df_rep: pd.DataFrame) -> str:
     return "\n".join(lineas)
 
 
+# --------------------------------------------------------------------------- #
+#  Helpers de fecha / semana ISO                                               #
+# --------------------------------------------------------------------------- #
+
+MESES_ES = {
+    1: "Enero", 2: "Febrero", 3: "Marzo", 4: "Abril",
+    5: "Mayo", 6: "Junio", 7: "Julio", 8: "Agosto",
+    9: "Septiembre", 10: "Octubre", 11: "Noviembre", 12: "Diciembre",
+}
+
+
+def agregar_cols_fecha(df: pd.DataFrame) -> pd.DataFrame:
+    """Añade columnas _AÑO, _MES_NUM, _MES_NOMBRE, _SEMANA_NUM, _SEMANA_LABEL."""
+    df = df.copy()
+    fechas = pd.to_datetime(df["FECHA"], errors="coerce")
+    iso = fechas.dt.isocalendar()
+    df["_AÑO"]        = iso["year"].astype("Int64")
+    df["_MES_NUM"]    = fechas.dt.month.astype("Int64")
+    df["_MES_NOMBRE"] = df["_MES_NUM"].map(MESES_ES).fillna("")
+    df["_SEMANA_NUM"] = iso["week"].astype("Int64")
+
+    def _lbl(d):
+        if pd.isna(d):
+            return ""
+        lun = d - pd.Timedelta(days=d.weekday())
+        dom = lun + pd.Timedelta(days=6)
+        w = d.isocalendar()[1]
+        return f"S{w:02d} ({lun.strftime('%d/%m')}–{dom.strftime('%d/%m')})"
+
+    df["_SEMANA_LABEL"] = fechas.apply(_lbl)
+    return df
+
+
+def graf_registros_semana(df: pd.DataFrame) -> go.Figure:
+    """Barras apiladas: registros DÍA/NOCHE por semana ISO."""
+    df2 = agregar_cols_fecha(df)
+    df2 = df2.dropna(subset=["_SEMANA_NUM"])
+    cnt = (df2.groupby(["_SEMANA_LABEL", "_SEMANA_NUM", "TURNO"])
+              .size().reset_index(name="Registros"))
+    cnt = cnt.sort_values("_SEMANA_NUM")
+    fig = px.bar(
+        cnt, x="_SEMANA_LABEL", y="Registros", color="TURNO",
+        barmode="stack", text="Registros",
+        color_discrete_map={"DIA": _C["dia"], "NOCHE": _C["noche"]},
+        labels={"_SEMANA_LABEL": "Semana", "Registros": "Personas"},
+    )
+    fig.update_traces(textposition="inside", textfont_size=11)
+    fig.update_layout(
+        xaxis_title="Semana ISO", yaxis_title="Personas",
+        legend=dict(orientation="h", y=1.06, x=0.5, xanchor="center"),
+    )
+    return _layout(fig, "📅 Registros por Semana del Año (DÍA · NOCHE)", h=350)
+
+
+def graf_tthh_semana(df: pd.DataFrame) -> go.Figure:
+    """Barras apiladas: Hora Normal + 25% + 35% por semana ISO."""
+    df2 = agregar_cols_fecha(df)
+    df2 = df2.dropna(subset=["_SEMANA_NUM"])
+    agg = (df2.groupby(["_SEMANA_LABEL", "_SEMANA_NUM"]).agg(
+        Normal=("hora normal", "sum"),
+        Hora25=("hora 25",    "sum"),
+        Hora35=("hora 35",    "sum"),
+    ).reset_index().sort_values("_SEMANA_NUM"))
+
+    def _lbl(s): return s.map(lambda x: f"{x:.1f}" if x > 0 else "")
+
+    fig = go.Figure([
+        go.Bar(name="Hora Normal", x=agg["_SEMANA_LABEL"], y=agg["Normal"],
+               marker_color=_C["normal"], text=_lbl(agg["Normal"]),
+               textposition="inside", textfont_size=10),
+        go.Bar(name="Hora 25%",   x=agg["_SEMANA_LABEL"], y=agg["Hora25"],
+               marker_color=_C["h25"],   text=_lbl(agg["Hora25"]),
+               textposition="inside", textfont_size=10),
+        go.Bar(name="Hora 35%",   x=agg["_SEMANA_LABEL"], y=agg["Hora35"],
+               marker_color=_C["h35"],   text=_lbl(agg["Hora35"]),
+               textposition="inside", textfont_size=10),
+    ])
+    fig.update_layout(
+        barmode="stack", xaxis_title="Semana ISO", yaxis_title="Horas",
+        legend=dict(orientation="h", y=1.08, x=0.5, xanchor="center"),
+    )
+    return _layout(fig, "📊 TTHH por Semana del Año (Normal · 25% · 35%)", h=370)
+
+
 def url_wa(texto: str) -> str:
     """Genera la URL de WhatsApp Web con el texto codificado."""
     return f"https://wa.me/?text={urllib.parse.quote(texto)}"
