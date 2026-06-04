@@ -171,6 +171,7 @@ if st.session_state.user is None:
 # Usuario autenticado
 USER = st.session_state.user
 ES_COORD = USER["rol"] == "coordinador"
+ES_VISOR = USER["rol"] == "visualizador"
 GRUPO_USER = USER.get("grupo")
 
 # Carga el tareo compartido en cada recarga (refleja el trabajo de otros)
@@ -181,7 +182,12 @@ st.session_state.tabla = cargar_estado_app()
 #  Barra lateral: configuracion                                                #
 # --------------------------------------------------------------------------- #
 with st.sidebar:
-    rol_txt = "Coordinador" if ES_COORD else f"Supervisor · Grupo {GRUPO_USER}"
+    if ES_COORD:
+        rol_txt = "Coordinador"
+    elif ES_VISOR:
+        rol_txt = "Visualizador"
+    else:
+        rol_txt = f"Supervisor · Grupo {GRUPO_USER}"
     st.markdown(f"👤 **{USER['usuario']}**  \n_{rol_txt}_")
     if st.button("🚪 Salir", type="primary", use_container_width=True):
         st.session_state.clear()
@@ -261,6 +267,11 @@ if ES_COORD:
         ["📥 1. Cargar", "🧮 2. Condiciones / TTHH", "✅ 3. Aprobación",
          "📤 4. Reporte final", "📊 Dashboard", "📱 Compartir", "👥 Usuarios"]
     )
+elif ES_VISOR:
+    tab_cargar, tab_reporte, tab_dashboard, tab_compartir = st.tabs(
+        ["📥 Cargar", "📤 Reporte final", "📊 Dashboard", "📱 Compartir"]
+    )
+    tab_condiciones = tab_aprobacion = tab_users = None
 else:
     tab_condiciones, tab_aprobacion, tab_dashboard, tab_compartir = st.tabs(
         ["🧮 Condiciones / TTHH", "✅ Aprobación", "📊 Dashboard", "📱 Compartir"]
@@ -329,7 +340,8 @@ if tab_cargar is not None:
 # --------------------------------------------------------------------------- #
 #  TAB 2: Condiciones / TTHH                                                   #
 # --------------------------------------------------------------------------- #
-with tab_condiciones:
+if tab_condiciones is not None:
+ with tab_condiciones:
     if st.session_state.tabla is None:
         st.info("Primero carga y procesa el tareo en la pestaña 1.")
     else:
@@ -468,7 +480,8 @@ with tab_condiciones:
 # --------------------------------------------------------------------------- #
 #  TAB 3: Aprobación                                                           #
 # --------------------------------------------------------------------------- #
-with tab_aprobacion:
+if tab_aprobacion is not None:
+ with tab_aprobacion:
     if st.session_state.tabla is None:
         st.info("Primero carga y procesa el tareo en la pestaña 1.")
     else:

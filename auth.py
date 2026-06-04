@@ -4,13 +4,10 @@ auth.py
 Control de acceso por supervisor para el Aplicativo de Tareo de Operaciones.
 
 Roles:
-  - coordinador : ve y aprueba TODOS los grupos, genera el reporte final y
-                  administra los usuarios.
-  - supervisor  : sólo ve y autoriza SU grupo.
-
-Los usuarios se guardan en 'usuarios.json' (junto a este archivo). Las
-contraseñas se almacenan con hash SHA-256 + sal, nunca en texto plano.
-La primera vez se crean usuarios por defecto (uno por grupo + coordinador).
+  - coordinador  : ve y aprueba TODOS los grupos, genera el reporte final y
+                   administra los usuarios.
+  - supervisor   : sólo ve y autoriza SU grupo.
+  - visualizador : carga archivos y consulta reportes; no edita ni aprueba.
 """
 
 from __future__ import annotations
@@ -45,9 +42,10 @@ def _nuevo_registro(password: str, rol: str, grupo) -> dict:
 #  Carga / guardado                                                            #
 # --------------------------------------------------------------------------- #
 def usuarios_por_defecto() -> dict:
-    """Coordinador + un supervisor por grupo, con claves iniciales sencillas."""
+    """Coordinador + supervisores por grupo + usuario visualizador de prueba."""
     users = {
-        "donet": _nuevo_registro("donet2026", "coordinador", None),
+        "donet":  _nuevo_registro("donet2026",  "coordinador",  None),
+        "prueba": _nuevo_registro("prueba2026", "visualizador", None),
     }
     for g in GRUPOS_POR_DEFECTO:
         users[f"sup_{g}".lower()] = _nuevo_registro(f"{g}123", "supervisor", g)
@@ -85,9 +83,13 @@ def guardar_usuarios(users: dict) -> None:
 
 
 def ensure_defaults() -> None:
-    """Crea los usuarios por defecto si aún no existe ninguno."""
-    if not cargar_usuarios():
-        guardar_usuarios(usuarios_por_defecto())
+    """Crea los usuarios por defecto si no existen; añade los que falten."""
+    users = cargar_usuarios()
+    defaults = usuarios_por_defecto()
+    nuevos = {u: d for u, d in defaults.items() if u not in users}
+    if nuevos:
+        users.update(nuevos)
+        guardar_usuarios(users)
 
 
 # --------------------------------------------------------------------------- #
