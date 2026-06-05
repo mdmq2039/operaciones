@@ -585,7 +585,7 @@ def generar_pdf_graficos(df: "pd.DataFrame", titulo: str = "INFORME DE OPERACION
                         ax.text(bar.get_x() + bar.get_width() / 2,
                                 bar.get_y() + bar.get_height() / 2,
                                 str(int(v)), ha="center", va="center",
-                                fontsize=7, color="white", fontweight="bold")
+                                fontsize=9, color="white", fontweight="bold")
                 bottom = vals.copy() if bottom is None else bottom + vals
         ax.set_xlabel("Grupo", fontsize=8)
         ax.set_ylabel("Personas", fontsize=8)
@@ -628,7 +628,7 @@ def generar_pdf_graficos(df: "pd.DataFrame", titulo: str = "INFORME DE OPERACION
                 ax.text(bar.get_x() + bar.get_width() / 2,
                         bar.get_y() + bar.get_height() / 2,
                         f"{val:.1f}h", ha="center", va="center",
-                        fontsize=7, color="white", fontweight="bold")
+                        fontsize=9, color="white", fontweight="bold")
         ax.set_xlabel("Horas promedio", fontsize=8)
         ax.set_title("Prom. Horas Marcacion por Grupo", color=AZ, fontweight="bold", fontsize=10)
         ax.tick_params(labelsize=7)
@@ -656,7 +656,7 @@ def generar_pdf_graficos(df: "pd.DataFrame", titulo: str = "INFORME DE OPERACION
                             ax.text(bar.get_x() + bar.get_width() / 2,
                                     bar.get_y() + bar.get_height() / 2,
                                     f"{v:.1f}", ha="center", va="center",
-                                    fontsize=6, color="white", fontweight="bold")
+                                    fontsize=9, color="white", fontweight="bold")
                     bottom = vals.copy() if bottom is None else bottom + vals
             ax.set_xlabel("Grupo", fontsize=8)
             ax.set_ylabel("Horas", fontsize=8)
@@ -704,7 +704,7 @@ def generar_pdf_graficos(df: "pd.DataFrame", titulo: str = "INFORME DE OPERACION
                     ax.text(bar.get_x() + bar.get_width() / 2,
                             bar.get_y() + bar.get_height() / 2,
                             str(int(v)), ha="center", va="center",
-                            fontsize=7, color="white", fontweight="bold")
+                            fontsize=9, color="white", fontweight="bold")
             bars_p = ax.barh(agg7["GRUPO"].astype(str), agg7["Pendientes"],
                              left=agg7["Aprobados"].values, color=GR, label="Pendientes")
             for bar, v in zip(bars_p, agg7["Pendientes"]):
@@ -712,7 +712,7 @@ def generar_pdf_graficos(df: "pd.DataFrame", titulo: str = "INFORME DE OPERACION
                     ax.text(bar.get_x() + bar.get_width() / 2,
                             bar.get_y() + bar.get_height() / 2,
                             str(int(v)), ha="center", va="center",
-                            fontsize=7, color="#1E293B", fontweight="bold")
+                            fontsize=9, color="#1E293B", fontweight="bold")
             ax.set_xlabel("Personas", fontsize=8)
             ax.set_title("Estado de Aprobacion por Grupo", color=AZ, fontweight="bold", fontsize=10)
             ax.legend(fontsize=7, loc="upper right")
@@ -744,7 +744,7 @@ def generar_pdf_graficos(df: "pd.DataFrame", titulo: str = "INFORME DE OPERACION
                         ax.text(bar.get_x() + bar.get_width() / 2,
                                 bar.get_y() + bar.get_height() / 2,
                                 str(int(v)), ha="center", va="center",
-                                fontsize=6, color="white", fontweight="bold")
+                                fontsize=9, color="white", fontweight="bold")
                 bottom = [v for v in vals] if bottom is None else [b + v for b, v in zip(bottom, vals)]
             ax.set_xticks(range(len(nums_s)))
             ax.set_xticklabels(labels_s, rotation=30, ha="right", fontsize=6)
@@ -771,7 +771,7 @@ def generar_pdf_graficos(df: "pd.DataFrame", titulo: str = "INFORME DE OPERACION
                                 ax.text(bar.get_x() + bar.get_width() / 2,
                                         bar.get_y() + bar.get_height() / 2,
                                         f"{v:.1f}", ha="center", va="center",
-                                        fontsize=6, color="white", fontweight="bold")
+                                        fontsize=9, color="white", fontweight="bold")
                         bottom = vals.copy() if bottom is None else bottom + vals
                 ax.set_xticks(range(len(agg_sw)))
                 ax.set_xticklabels(agg_sw["_SEMANA_LABEL"].tolist(), rotation=30, ha="right", fontsize=6)
@@ -812,7 +812,15 @@ def generar_pdf_graficos(df: "pd.DataFrame", titulo: str = "INFORME DE OPERACION
     h25_tot   = float(df["hora 25"].sum())     if "hora 25"     in df.columns else 0.0
     h35_tot   = float(df["hora 35"].sum())     if "hora 35"     in df.columns else 0.0
     hnor_tot  = float(df["hora normal"].sum()) if "hora normal" in df.columns else 0.0
-    fecha_gen = _dt2.datetime.now().strftime("%d/%m/%Y  %H:%M")
+    fecha_gen = _dt2.datetime.now().strftime("%d/%m/%Y  %I:%M %p")
+
+    # Línea de grupos/turno/aprobado para la cabecera
+    grupos_uniq = sorted(df["GRUPO"].dropna().unique().tolist()) if "GRUPO" in df.columns else []
+    turnos_uniq = sorted(df["TURNO"].dropna().unique().tolist()) if "TURNO" in df.columns else []
+    grupos_hdr  = "Grupos: " + "  ·  ".join(str(g) for g in grupos_uniq) if grupos_uniq else "Todos"
+    turnos_hdr  = "Turno: " + " / ".join(turnos_uniq) if turnos_uniq else ""
+    info_hdr    = "   |   ".join(filter(None, [
+        grupos_hdr, turnos_hdr, f"Aprobados: {aprobados}/{total} ({pct_apr})"]))
 
     # ── Colores ──────────────────────────────────────────────────────────────
     AZ1 = rc.HexColor("#1F4E9B")   # azul oscuro
@@ -826,11 +834,10 @@ def generar_pdf_graficos(df: "pd.DataFrame", titulo: str = "INFORME DE OPERACION
     W, H = A4                      # 595 × 842 pt
     ML   = MR = 20
 
-    # Cabecera: banda azul (B1) + 2 filas de texto sobre fondo blanco
+    # Cabecera: banda azul (B1) + 3 filas de texto sobre fondo blanco
     B1   = 44                      # banda azul con logo y título
-    # Fila periodo: baseline en H-B1-18=780, fila KPIs: baseline en H-B1-34=764
-    # Línea azul de cierre de cabecera en H-B1-44=754
-    HDR_LINE = H - B1 - 44        # y de la línea azul de cierre = 754
+    # Fila 1 (grupos): y1-16, Fila 2 (AÑO/MES): y1-30, Fila 3 (KPIs): y1-46
+    HDR_LINE = H - B1 - 60        # y de la línea azul de cierre = 738
 
     # Pie de página
     FTR = 88                       # pt reservados desde abajo
@@ -877,8 +884,13 @@ def generar_pdf_graficos(df: "pd.DataFrame", titulo: str = "INFORME DE OPERACION
             for i, txt in enumerate(items):
                 c.drawCentredString(ML + (i + 0.5) * sw, y, txt)
 
+        # Fila 1 — Grupos / Turno / Aprobados (centrado, negrita)
+        c.setFont("Helvetica-Bold", 8.5)
+        c.setFillColor(TXT)
+        c.drawCentredString(W / 2, y1 - 16, info_hdr)
+
         # Fila 2 — Periodo (distribuida simétricamente)
-        _fila_sym(y1 - 18, [
+        _fila_sym(y1 - 30, [
             f"AÑO: {año_str}",
             f"MES: {mes_str}",
             f"SEMANA: {sem_str}",
@@ -886,7 +898,7 @@ def generar_pdf_graficos(df: "pd.DataFrame", titulo: str = "INFORME DE OPERACION
         ])
 
         # Fila 3 — KPIs (distribuida simétricamente)
-        _fila_sym(y1 - 34, [
+        _fila_sym(y1 - 46, [
             f"Registros: {total}",
             f"Aprobados: {aprobados}/{total} ({pct_apr})",
             f"TTHH: {tthh_tot:.1f} h",
