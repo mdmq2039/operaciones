@@ -533,6 +533,7 @@ def generar_pdf_graficos(df: "pd.DataFrame", titulo: str = "INFORME DE OPERACION
     from reportlab.lib.utils import ImageReader
     from reportlab.lib import colors as rc
     import datetime as _dt2
+    from zoneinfo import ZoneInfo as _ZI
     import matplotlib
     matplotlib.use("Agg")
     import matplotlib.pyplot as plt
@@ -812,12 +813,38 @@ def generar_pdf_graficos(df: "pd.DataFrame", titulo: str = "INFORME DE OPERACION
     h25_tot   = float(df["hora 25"].sum())     if "hora 25"     in df.columns else 0.0
     h35_tot   = float(df["hora 35"].sum())     if "hora 35"     in df.columns else 0.0
     hnor_tot  = float(df["hora normal"].sum()) if "hora normal" in df.columns else 0.0
-    fecha_gen = _dt2.datetime.now().strftime("%d/%m/%Y  %I:%M %p")
 
-    # Línea de grupos/turno/aprobado para la cabecera
+    # Hora de generación del PDF en zona Lima
+    _lima     = _ZI("America/Lima")
+    fecha_gen = _dt2.datetime.now(_lima).strftime("%d/%m/%Y  %I:%M %p")
+
+    # Mapa GRUPO → nombre SERVICE más frecuente (ej. "1" → "RECEPCIÓN")
+    if "SERVICE" in df.columns and "GRUPO" in df.columns:
+        _gns = (df.dropna(subset=["GRUPO", "SERVICE"])
+                  .groupby("GRUPO")["SERVICE"]
+                  .agg(lambda x: x.value_counts().index[0]))
+        grupo_nombre_map = _gns.to_dict()
+    else:
+        grupo_nombre_map = {}
+
+    # Timestamp de aprobación por grupo (UTC→Lima)
     grupos_uniq = sorted(df["GRUPO"].dropna().unique().tolist()) if "GRUPO" in df.columns else []
+    apro_por_grupo: dict = {}
+    if "FechaAprobacion" in df.columns and "GRUPO" in df.columns:
+        for _g in grupos_uniq:
+            _mask = (df["GRUPO"].astype(str) == str(_g)) & df["FechaAprobacion"].notna()
+            _sub  = df.loc[_mask, "FechaAprobacion"]
+            if len(_sub) > 0:
+                _ts = pd.to_datetime(_sub).max()
+                if _ts.tzinfo is None:
+                    _ts = _ts.tz_localize("UTC")
+                _ts = _ts.tz_convert(_lima)
+                apro_por_grupo[str(_g)] = _ts.strftime("%d/%m/%Y  %I:%M %p")
+
+    # Línea de grupos/turno/aprobado para la cabecera (con nombres reales)
     turnos_uniq = sorted(df["TURNO"].dropna().unique().tolist()) if "TURNO" in df.columns else []
-    grupos_hdr  = "Grupos: " + "  ·  ".join(str(g) for g in grupos_uniq) if grupos_uniq else "Todos"
+    grupos_nombres = [grupo_nombre_map.get(str(g), str(g)) for g in grupos_uniq]
+    grupos_hdr  = "Grupos: " + "  ·  ".join(grupos_nombres) if grupos_nombres else "Todos"
     turnos_hdr  = "Turno: " + " / ".join(turnos_uniq) if turnos_uniq else ""
     info_hdr    = "   |   ".join(filter(None, [
         grupos_hdr, turnos_hdr, f"Aprobados: {aprobados}/{total} ({pct_apr})"]))
@@ -932,37 +959,38 @@ def generar_pdf_graficos(df: "pd.DataFrame", titulo: str = "INFORME DE OPERACION
         c.drawCentredString(W / 2, BY0 + BH + TBAR // 2 - 3,
                             "APROBACIÓN Y AUTORIZACIÓN DEL INFORME")
 
-        for i, (rol, nombre) in enumerate([
-            ("COORDINADOR", coordinador or ""),
-            ("SUPERVISOR",  supervisor  or ""),
-        ]):
-            bx = i * (BW + GAP_B)
+        # ── Bloque IZQUIERDO: Coordinador ──────────────────────────────────
+        bx0 = 0
+        c.setFillColor(BLA); c.setStrokeColor(AZ1); c.setLineWidth(0.5)
+        c.rect(bx0, BY0, BW, BH, fill=1, stroke=1)
 
-            # Borde azul, fondo blanco
-            c.setFillColor(BLA)
-            c.setStrokeColor(AZ1)
-            c.setLineWidth(0.5)
-            c.rect(bx, BY0, BW, BH, fill=1, stroke=1)
+        c.setFont("Helvetica-Bold", 8.5); c.setFillColor(AZ1)
+        c.drawString(bx0 + 8, BY0 + BH - 14, "COORDINADOR")
+        c.setFont("Helvetica-Bold", 9); c.setFillColor(TXT)
+        c.drawString(bx0 + 8, BY0 + BH - 27, coordinador if coordinador else "—")
+        c.setFont("Helvetica", 7); c.setFillColor(GRY)
+        c.drawString(bx0 + 8, BY0 + BH - 40, "Nombre del coordinador responsable")
 
-            # Rol
-            c.setFont("Helvetica-Bold", 8.5)
-            c.setFillColor(AZ1)
-            c.drawString(bx + 8, BY0 + BH - 14, rol)
+        # ── Bloque DERECHO: Aprobación por grupo ───────────────────────────
+        bx1 = BW + GAP_B
+        c.setFillColor(BLA); c.setStrokeColor(AZ1); c.setLineWidth(0.5)
+        c.rect(bx1, BY0, BW, BH, fill=1, stroke=1)
 
-            # Nombre
-            c.setFont("Helvetica-Bold", 9)
-            c.setFillColor(TXT)
-            c.drawString(bx + 8, BY0 + BH - 27, nombre if nombre else "—")
+        c.setFont("Helvetica-Bold", 7.5); c.setFillColor(AZ1)
+        c.drawString(bx1 + 8, BY0 + BH - 12, "APROBACIÓN POR GRUPO")
 
-            # Etiqueta fecha y hora de aprobación
-            c.setFont("Helvetica", 7)
-            c.setFillColor(GRY)
-            c.drawString(bx + 8, BY0 + BH - 40, "Fecha y hora de aprobación:")
-
-            # Valor fecha
-            c.setFont("Helvetica-Bold", 8)
-            c.setFillColor(TXT)
-            c.drawString(bx + 8, BY0 + BH - 52, fecha_gen)
+        _gy = BY0 + BH - 24   # y inicial para listar grupos
+        _step = 10             # paso vertical por fila
+        for _g in grupos_uniq:
+            _nombre_g = grupo_nombre_map.get(str(_g), str(_g))
+            _ts_str   = apro_por_grupo.get(str(_g), "Pendiente")
+            c.setFont("Helvetica-Bold", 6.5); c.setFillColor(TXT)
+            c.drawString(bx1 + 8, _gy, f"{_nombre_g}:")
+            c.setFont("Helvetica", 6.5); c.setFillColor(GRY)
+            c.drawString(bx1 + 8 + 55, _gy, _ts_str)
+            _gy -= _step
+            if _gy < BY0 + 4:   # no salir del bloque
+                break
 
         # ── Franja inferior: Emitido (centro-derecha) · Hoja X/Y (extremo derecho)
         c.setFont("Helvetica", 7)

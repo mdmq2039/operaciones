@@ -112,6 +112,8 @@ def init_schema() -> None:
         )""",
         # Migración para tablas creadas antes de añadir 'aumento_extra'
         "ALTER TABLE tareo ADD COLUMN IF NOT EXISTS aumento_extra DOUBLE PRECISION DEFAULT 0",
+        # Migración para tablas creadas antes de añadir 'fecha_aprobacion'
+        "ALTER TABLE tareo ADD COLUMN IF NOT EXISTS fecha_aprobacion TIMESTAMPTZ",
         """
         CREATE TABLE IF NOT EXISTS auditoria (
             id              SERIAL PRIMARY KEY,
@@ -240,6 +242,7 @@ _DB_A_DF = {
     "descuento_extra": "DescuentoExtra", "aumento_extra": "AumentoExtra",
     "jornada_noche": "JornadaNoche",
     "observacion": "OBSERVACION", "aprobado": "Aprobado",
+    "fecha_aprobacion": "FechaAprobacion",
 }
 
 
@@ -336,3 +339,11 @@ def tareo_save_subset(df_subset: pd.DataFrame) -> None:
                 text("UPDATE tareo SET fecha = :fecha WHERE id = :id AND fecha IS NULL"),
                 params_fecha,
             )
+        # Registrar timestamp de aprobación: se fija al aprobarse, se borra al desaprobar
+        cx.execute(text(
+            "UPDATE tareo SET fecha_aprobacion = "
+            "CASE WHEN aprobado = TRUE AND fecha_aprobacion IS NULL THEN NOW() "
+            "WHEN aprobado = FALSE THEN NULL "
+            "ELSE fecha_aprobacion END "
+            "WHERE id = :id"
+        ), [{"id": p["id"]} for p in params])
