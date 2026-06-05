@@ -379,7 +379,7 @@ def aplicar_masivo(df: pd.DataFrame, columna: str, valor: Any,
 # --------------------------------------------------------------------------- #
 NOMBRES_GRUPO = {
     "1": "RECEPCION", "2": "ENVASADO", "3": "ANILLAS",
-    "4": "MASA", "5": "EMPAQUE", "N": "NOCHE",
+    "4": "MASA", "5": "EMPAQUE", "N": "NOCHE", "E": "EXTERIOR",
 }
 
 

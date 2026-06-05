@@ -473,13 +473,15 @@ if tab_condiciones is not None:
 
         # --- Selector de grupo (coordinador) / bloqueado (supervisor) ----- #
         grupos_disp = sorted(st.session_state.tabla["GRUPO"].unique().tolist(), key=str)
+        _fmt_g = lambda g: core.nombre_grupo(g) if g != "(Todos los grupos)" else g
         if ES_COORD:
             gsel = st.selectbox(
                 "👷 Grupo (alcance de esta vista)",
-                ["(Todos los grupos)"] + grupos_disp, key="grupo_cond")
+                ["(Todos los grupos)"] + grupos_disp,
+                format_func=_fmt_g, key="grupo_cond")
         else:
             gsel = str(GRUPO_USER)
-            st.info(f"Estás autorizando el **grupo {gsel}**.")
+            st.info(f"Estás autorizando el **grupo {core.nombre_grupo(gsel)}**.")
             if gsel not in [str(g) for g in grupos_disp]:
                 st.warning("Tu grupo no tiene registros en el tareo cargado.")
         if gsel == "(Todos los grupos)":
@@ -489,7 +491,7 @@ if tab_condiciones is not None:
         opciones_noche = list(cfg().jornada_noche_opciones.keys())
 
         # --- Acciones masivas (sólo sobre el grupo filtrado) -------------- #
-        with st.expander(f"⚡ Acciones masivas — alcance: **{gsel}**", expanded=True):
+        with st.expander(f"⚡ Acciones masivas — alcance: **{core.nombre_grupo(gsel) if gsel != '(Todos los grupos)' else gsel}**", expanded=True):
             m1, m2, m3 = st.columns(3)
             with m1:
                 st.markdown("**Corrido (C)**")
@@ -610,12 +612,14 @@ if tab_aprobacion is not None:
         )
 
         grupos_disp = sorted(st.session_state.tabla["GRUPO"].unique().tolist(), key=str)
+        _fmt_g2 = lambda g: core.nombre_grupo(g) if g != "(Todos los grupos)" else g
         if ES_COORD:
             gsel = st.selectbox(
-                "👷 Grupo", ["(Todos los grupos)"] + grupos_disp, key="grupo_aprob")
+                "👷 Grupo", ["(Todos los grupos)"] + grupos_disp,
+                format_func=_fmt_g2, key="grupo_aprob")
         else:
             gsel = str(GRUPO_USER)
-            st.info(f"Estás aprobando el **grupo {gsel}**.")
+            st.info(f"Estás aprobando el **grupo {core.nombre_grupo(gsel)}**.")
         if gsel == "(Todos los grupos)":
             mask_g = pd.Series(True, index=st.session_state.tabla.index)
         else:
@@ -665,7 +669,8 @@ if tab_aprobacion is not None:
                 st.warning(f"❌ {_n} registros desaprobados.")
         with a3:
             sub_t = st.session_state.tabla[mask_g]
-            st.metric(f"Aprobados ({gsel})",
+            _gsel_nom = core.nombre_grupo(gsel) if gsel != "(Todos los grupos)" else gsel
+            st.metric(f"Aprobados ({_gsel_nom})",
                       f"{int(sub_t['Aprobado'].sum())} / {len(sub_t)}")
 
         # Resumen de avance por grupo
@@ -835,10 +840,11 @@ with tab_dashboard:
             if ES_COORD:
                 grupos_sel = st.multiselect(
                     "Grupos a visualizar", grupos_disp_dash,
-                    default=grupos_disp_dash, key="dash_grupos")
+                    default=grupos_disp_dash,
+                    format_func=core.nombre_grupo, key="dash_grupos")
             else:
                 grupos_sel = [str(GRUPO_USER)]
-                st.info(f"Visualizando grupo: **{GRUPO_USER}**")
+                st.info(f"Visualizando grupo: **{core.nombre_grupo(GRUPO_USER)}**")
         with col_f2:
             turno_sel = st.selectbox(
                 "Turno", ["Todos", "DIA", "NOCHE"], key="dash_turno")
