@@ -40,7 +40,7 @@ st.markdown(
     """
     <style>
     .block-container {padding-top: 1.5rem;}
-    .titulo-app {font-size: 1.9rem; font-weight: 800; color: #1f3864;}
+    .titulo-app {font-size: clamp(1.1rem, 5vw, 1.9rem); font-weight: 800; color: #1f3864; line-height: 1.2;}
     .sub {color:#5b6770;}
     .metric-card {background:#f1f5fb;border-radius:10px;padding:10px 14px;}
     div[data-testid="stDataFrame"] {border:1px solid #d9e1ec;border-radius:8px;}
@@ -252,7 +252,7 @@ with st.sidebar:
 #  Encabezado                                                                  #
 # --------------------------------------------------------------------------- #
 mostrar_logo(48)
-st.markdown('<div class="titulo-app">🕒 Tareo de Operaciones — PECEPE</div>',
+st.markdown('<div class="titulo-app">🕒 Tareo de Operaciones</div>',
             unsafe_allow_html=True)
 st.markdown(
     '<div class="sub">De <b>REPORTE_TAREO_SISTEMA</b> al <b>REPORTE_OPERACIONES</b> '
@@ -287,24 +287,31 @@ if tab_cargar is not None:
 
         # --- Selector de periodo (año / mes / semana / días) ---------------- #
         with st.expander("📅 Periodo de trabajo", expanded=True):
-            _ahora = pd.Timestamp.now()
-            _años  = list(range(2024, _ahora.year + 2))
-            _pc1, _pc2 = st.columns(2)
+            st.markdown(
+                '<div style="background:linear-gradient(90deg,#1F4E9B,#1D4ED8);'
+                'border-radius:8px;padding:10px 16px;margin-bottom:14px;">'
+                '<span style="color:white;font-weight:700;font-size:0.95rem;">'
+                '📅 &nbsp;Selecciona el periodo de trabajo</span></div>',
+                unsafe_allow_html=True,
+            )
+            _ahora     = pd.Timestamp.now()
+            _años      = list(range(2024, _ahora.year + 2))
+            _mes_names = [dash.MESES_ES[i] for i in range(1, 13)]
+
+            _pc1, _pc2, _pc3 = st.columns(3)
             with _pc1:
                 _año_per = st.selectbox(
                     "Año", _años,
-                    index=_años.index(_ahora.year),
-                    key="per_anio")
+                    index=_años.index(_ahora.year), key="per_anio")
             with _pc2:
-                _mes_per = st.selectbox(
-                    "Mes", list(range(1, 13)),
-                    format_func=lambda m: dash.MESES_ES[m],
-                    index=_ahora.month - 1,
-                    key="per_mes")
+                _mes_nombre = st.selectbox(
+                    "Mes", _mes_names,
+                    index=_ahora.month - 1, key="per_mes")
+                _mes_per = _mes_names.index(_mes_nombre) + 1
 
-            _semanas   = dash.semanas_del_mes(_año_per, _mes_per)
-            _sem_lbls  = [s["label"] for s in _semanas]
-            _sem_def   = 0
+            _semanas  = dash.semanas_del_mes(_año_per, _mes_per)
+            _sem_lbls = [s["label"] for s in _semanas]
+            _sem_def  = 0
             if _año_per == _ahora.year and _mes_per == _ahora.month:
                 _iso_now = _ahora.isocalendar()[1]
                 for _i, _s in enumerate(_semanas):
@@ -312,31 +319,49 @@ if tab_cargar is not None:
                         _sem_def = _i
                         break
 
-            _sem_sel_lbl = st.selectbox(
-                "Semana ISO", _sem_lbls, index=_sem_def, key="per_semana")
+            with _pc3:
+                _sem_sel_lbl = st.selectbox(
+                    "Semana ISO", _sem_lbls, index=_sem_def, key="per_semana")
             _sem_sel = _semanas[_sem_lbls.index(_sem_sel_lbl)]
 
-            st.markdown(f"**📆 Semana {_sem_sel['label']}** — marca los días a trabajar:")
+            st.markdown(
+                '<p style="margin:12px 0 4px 0;font-size:0.82rem;'
+                'color:#374151;font-weight:600;">'
+                'Días de la semana — marca los que vas a trabajar:</p>',
+                unsafe_allow_html=True,
+            )
             _cols_d = st.columns(7)
             _fechas_periodo = []
             for _col_d, _dia in zip(_cols_d, _sem_sel["dias"]):
-                _bg = "#EEF2FF" if _dia["en_mes"] else "#F3F4F6"
-                _fc = "#1F4E9B" if _dia["en_mes"] else "#9CA3AF"
+                _en = _dia["en_mes"]
+                _bg = "#DBEAFE" if _en else "#F3F4F6"
+                _fc = "#1D4ED8" if _en else "#9CA3AF"
+                _brd = "#93C5FD" if _en else "#E5E7EB"
                 _col_d.markdown(
                     f'<div style="background:{_bg};border-radius:8px 8px 0 0;'
-                    f'padding:8px 4px 2px 4px;text-align:center;">'
-                    f'<b style="font-size:0.72rem;color:{_fc}">'
+                    f'padding:8px 4px 2px 4px;text-align:center;'
+                    f'border:1px solid {_brd};border-bottom:none;">'
+                    f'<b style="font-size:0.68rem;color:{_fc}">'
                     f'{_dia["nombre"][:3].upper()}</b>'
-                    f'<br><span style="font-size:0.85rem;color:#374151">'
-                    f'{_dia["fecha"].strftime("%d/%m")}</span></div>',
+                    f'<br><b style="font-size:0.85rem;color:#111827;">'
+                    f'{_dia["fecha"].strftime("%d/%m")}</b></div>',
                     unsafe_allow_html=True,
                 )
                 if _col_d.checkbox(
-                    "sel", value=_dia["en_mes"],
+                    "✓", value=_en,
                     key=f"dia_{_dia['fecha'].isoformat()}",
                     label_visibility="collapsed",
                 ):
                     _fechas_periodo.append(_dia["fecha"])
+
+            # Guardar en session state para que el Dashboard lo use
+            st.session_state["_per_fechas"] = _fechas_periodo
+            if _fechas_periodo:
+                _resumen_dias = " · ".join(
+                    f"{dash.DIAS_ES[f.weekday()][:3]} {f.strftime('%d/%m')}"
+                    for f in _fechas_periodo
+                )
+                st.caption(f"Periodo activo: {len(_fechas_periodo)} día(s) — {_resumen_dias}")
 
         st.write("")
         archivo = st.file_uploader(
@@ -780,40 +805,75 @@ with tab_dashboard:
             turno_sel = st.selectbox(
                 "Turno", ["Todos", "DIA", "NOCHE"], key="dash_turno")
 
-        # --- Filtros de fecha / semana ISO --------------------------------- #
+        # --- Filtros de fecha / semana ISO / día ----------------------------- #
         df_dash_f = dash.agregar_cols_fecha(df_dash)
         años_disp = sorted(df_dash_f["_AÑO"].dropna().unique().tolist())
-        col_f3, col_f4, col_f5 = st.columns(3)
-        with col_f3:
+
+        _df1, _df2, _df3 = st.columns(3)
+        with _df1:
             año_sel = st.selectbox(
                 "Año", ["Todos"] + [int(a) for a in años_disp], key="dash_anio")
-        with col_f4:
-            meses_disp = sorted(
-                df_dash_f["_MES_NUM"].dropna().unique().tolist())
+        with _df2:
+            meses_disp = sorted(df_dash_f["_MES_NUM"].dropna().unique().tolist())
             meses_opts = [dash.MESES_ES.get(int(m), str(m)) for m in meses_disp]
             meses_sel_names = st.multiselect(
                 "Mes", meses_opts, default=meses_opts, key="dash_meses")
             meses_sel_nums = [
                 k for k, v in dash.MESES_ES.items() if v in meses_sel_names]
-        with col_f5:
+        with _df3:
+            # Semanas filtradas por año y mes ya seleccionados
+            _ms_tmp = pd.Series(True, index=df_dash_f.index)
+            if año_sel != "Todos":
+                _ms_tmp &= df_dash_f["_AÑO"] == int(año_sel)
+            if meses_sel_nums:
+                _ms_tmp &= df_dash_f["_MES_NUM"].isin(meses_sel_nums)
             sems_disp = (
-                df_dash_f[df_dash_f["_SEMANA_LABEL"] != ""]["_SEMANA_LABEL"]
-                .drop_duplicates()
-                .sort_values()
-                .tolist()
+                df_dash_f[_ms_tmp & (df_dash_f["_SEMANA_LABEL"] != "")]["_SEMANA_LABEL"]
+                .drop_duplicates().sort_values().tolist()
             )
             sems_sel = st.multiselect(
                 "Semana ISO", sems_disp, default=sems_disp, key="dash_semanas")
 
-        mask_dash = df_dash_f["GRUPO"].isin(grupos_sel)
+        # Máscara parcial: grupo + turno + año + mes + semana
+        mask_partial = df_dash_f["GRUPO"].isin(grupos_sel)
         if turno_sel != "Todos":
-            mask_dash &= df_dash_f["TURNO"] == turno_sel
+            mask_partial &= df_dash_f["TURNO"] == turno_sel
         if año_sel != "Todos":
-            mask_dash &= df_dash_f["_AÑO"] == int(año_sel)
+            mask_partial &= df_dash_f["_AÑO"] == int(año_sel)
         if meses_sel_nums:
-            mask_dash &= df_dash_f["_MES_NUM"].isin(meses_sel_nums)
+            mask_partial &= df_dash_f["_MES_NUM"].isin(meses_sel_nums)
         if sems_sel:
-            mask_dash &= df_dash_f["_SEMANA_LABEL"].isin(sems_sel)
+            mask_partial &= df_dash_f["_SEMANA_LABEL"].isin(sems_sel)
+
+        # Filtro de días específicos (se sincroniza con el periodo de Tab 1)
+        _periodo_fechas = st.session_state.get("_per_fechas", [])
+        _fechas_en_filtro = sorted(
+            pd.to_datetime(df_dash_f.loc[mask_partial, "FECHA"], errors="coerce")
+            .dt.date.dropna().unique()
+        )
+        if _fechas_en_filtro:
+            _dias_fmt = {
+                f"{dash.DIAS_ES[f.weekday()][:3].upper()} {f.strftime('%d/%m')}": f
+                for f in _fechas_en_filtro
+            }
+            _default_dias = (
+                [lbl for lbl, f in _dias_fmt.items() if f in _periodo_fechas]
+                or list(_dias_fmt.keys())
+            )
+            _dias_sel_lbls = st.multiselect(
+                "Días específicos", list(_dias_fmt.keys()),
+                default=_default_dias, key="dash_dias",
+            )
+            _fechas_sel = [_dias_fmt[lbl] for lbl in _dias_sel_lbls]
+            mask_dash = mask_partial.copy()
+            if _fechas_sel:
+                mask_dash &= (
+                    pd.to_datetime(df_dash_f["FECHA"], errors="coerce")
+                    .dt.date.isin(_fechas_sel)
+                )
+        else:
+            mask_dash = mask_partial
+
         df_f = df_dash_f[mask_dash]
 
         if len(df_f) == 0:
