@@ -1,6 +1,7 @@
 # Blueprint de Render para el Aplicativo de Tareo de Operaciones (Streamlit).
 # Render ejecuta build + start. La variable DATABASE_URL se configura en el
 # dashboard de Render (Environment), nunca en el repositorio.
+# v2026-06-05 — forzar redeploy con correcciones de título, FECHA y Refrigerio
 services:
   - type: web
     name: operaciones

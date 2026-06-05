@@ -40,7 +40,7 @@ st.markdown(
     """
     <style>
     .block-container {padding-top: 1.5rem;}
-    .titulo-app {font-size: clamp(1.1rem, 5vw, 1.9rem); font-weight: 800; color: #1f3864; line-height: 1.2;}
+    .titulo-app {font-size: clamp(1.0rem, 4.5vw, 1.9rem); font-weight: 800; color: #1f3864; line-height: 1.2;}
     .sub {color:#5b6770;}
     .metric-card {background:#f1f5fb;border-radius:10px;padding:10px 14px;}
     div[data-testid="stDataFrame"] {border:1px solid #d9e1ec;border-radius:8px;}
