@@ -1047,7 +1047,11 @@ with tab_dashboard:
             # --- Descarga PDF de gráficos ----------------------------------- #
             st.divider()
             st.markdown("### 📄 Descargar gráficos en PDF")
-            _pdf_graf = dash.generar_pdf_graficos(df_f, "GRÁFICOS DASHBOARD — PECEPE")
+            _coord_pdf = USER["usuario"] if ES_COORD else ""
+            _sup_pdf   = USER["usuario"] if not ES_COORD else ""
+            _pdf_graf = dash.generar_pdf_graficos(
+                df_f, "INFORME DE OPERACIONES — PECEPE",
+                coordinador=_coord_pdf, supervisor=_sup_pdf)
             st.download_button(
                 "⬇️ Descargar PDF — Gráficos del Dashboard (A4)",
                 data=_pdf_graf,
@@ -1147,8 +1151,11 @@ with tab_compartir:
                             ".spreadsheetml.sheet"
                         ),
                     )
+            _coord_wa = USER["usuario"] if ES_COORD else ""
+            _sup_wa   = USER["usuario"] if not ES_COORD else ""
             _pdf_graf_wa = dash.generar_pdf_graficos(
-                df_wa, "GRÁFICOS DASHBOARD — PECEPE")
+                df_wa, "INFORME DE OPERACIONES — PECEPE",
+                coordinador=_coord_wa, supervisor=_sup_wa)
             st.download_button(
                 "⬇️ Descargar PDF — Gráficos del Dashboard",
                 data=_pdf_graf_wa,
@@ -1188,8 +1195,11 @@ with tab_compartir:
                     )
 
             # PDF de gráficos del Dashboard
+            _coord_comp = USER["usuario"] if ES_COORD else ""
+            _sup_comp   = USER["usuario"] if not ES_COORD else ""
             _pdf_graf_comp = dash.generar_pdf_graficos(
-                df_wa, "GRÁFICOS DASHBOARD — PECEPE")
+                df_wa, "INFORME DE OPERACIONES — PECEPE",
+                coordinador=_coord_comp, supervisor=_sup_comp)
             st.download_button(
                 "⬇️ Descargar PDF — Gráficos del Dashboard",
                 data=_pdf_graf_comp,
