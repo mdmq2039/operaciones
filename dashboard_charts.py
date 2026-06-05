@@ -534,6 +534,7 @@ def generar_pdf_graficos(df: "pd.DataFrame", titulo: str = "INFORME DE OPERACION
     from reportlab.lib import colors as rc
     import datetime as _dt2
     from zoneinfo import ZoneInfo as _ZI
+    import tareo_core as _tc_mod
     import matplotlib
     matplotlib.use("Agg")
     import matplotlib.pyplot as plt
@@ -814,23 +815,14 @@ def generar_pdf_graficos(df: "pd.DataFrame", titulo: str = "INFORME DE OPERACION
     h35_tot   = float(df["hora 35"].sum())     if "hora 35"     in df.columns else 0.0
     hnor_tot  = float(df["hora normal"].sum()) if "hora normal" in df.columns else 0.0
 
-    # Hora de generación del PDF en zona Lima
     _lima     = _ZI("America/Lima")
     fecha_gen = _dt2.datetime.now(_lima).strftime("%d/%m/%Y  %I:%M %p")
 
-    # Mapa GRUPO → nombre SERVICE más frecuente (ej. "1" → "RECEPCIÓN")
-    if "SERVICE" in df.columns and "GRUPO" in df.columns:
-        _gns = (df.dropna(subset=["GRUPO", "SERVICE"])
-                  .groupby("GRUPO")["SERVICE"]
-                  .agg(lambda x: x.value_counts().index[0]))
-        grupo_nombre_map = _gns.to_dict()
-    else:
-        grupo_nombre_map = {}
-
-    # Timestamp de aprobación por grupo (UTC→Lima)
+    # Mapa GRUPO→nombre real (RECEPCION, ENVASADO, ...) y aprobaciones por grupo
+    grupo_nombre_map = _tc_mod.NOMBRES_GRUPO
     grupos_uniq = sorted(df["GRUPO"].dropna().unique().tolist()) if "GRUPO" in df.columns else []
     apro_por_grupo: dict = {}
-    if "FechaAprobacion" in df.columns and "GRUPO" in df.columns:
+    if "FechaAprobacion" in df.columns:
         for _g in grupos_uniq:
             _mask = (df["GRUPO"].astype(str) == str(_g)) & df["FechaAprobacion"].notna()
             _sub  = df.loc[_mask, "FechaAprobacion"]
@@ -840,14 +832,6 @@ def generar_pdf_graficos(df: "pd.DataFrame", titulo: str = "INFORME DE OPERACION
                     _ts = _ts.tz_localize("UTC")
                 _ts = _ts.tz_convert(_lima)
                 apro_por_grupo[str(_g)] = _ts.strftime("%d/%m/%Y  %I:%M %p")
-
-    # Línea de grupos/turno/aprobado para la cabecera (con nombres reales)
-    turnos_uniq = sorted(df["TURNO"].dropna().unique().tolist()) if "TURNO" in df.columns else []
-    grupos_nombres = [grupo_nombre_map.get(str(g), str(g)) for g in grupos_uniq]
-    grupos_hdr  = "Grupos: " + "  ·  ".join(grupos_nombres) if grupos_nombres else "Todos"
-    turnos_hdr  = "Turno: " + " / ".join(turnos_uniq) if turnos_uniq else ""
-    info_hdr    = "   |   ".join(filter(None, [
-        grupos_hdr, turnos_hdr, f"Aprobados: {aprobados}/{total} ({pct_apr})"]))
 
     # ── Colores ──────────────────────────────────────────────────────────────
     AZ1 = rc.HexColor("#1F4E9B")   # azul oscuro
@@ -863,11 +847,11 @@ def generar_pdf_graficos(df: "pd.DataFrame", titulo: str = "INFORME DE OPERACION
 
     # Cabecera: banda azul (B1) + 3 filas de texto sobre fondo blanco
     B1   = 44                      # banda azul con logo y título
-    # Fila 1 (grupos): y1-16, Fila 2 (AÑO/MES): y1-30, Fila 3 (KPIs): y1-46
-    HDR_LINE = H - B1 - 60        # y de la línea azul de cierre = 738
+    # Fila grupos: y1-14, Fila periodo: y1-28, Fila KPIs: y1-42
+    HDR_LINE = H - B1 - 50        # y de la línea azul de cierre = 748
 
-    # Pie de página
-    FTR = 88                       # pt reservados desde abajo
+    # Pie de página (solo línea de Emitido / Hoja)
+    FTR = 22                       # pt reservados desde abajo
 
     # Área de gráficos
     CP   = 8
@@ -889,120 +873,128 @@ def generar_pdf_graficos(df: "pd.DataFrame", titulo: str = "INFORME DE OPERACION
 
     # ── Cabecera ─────────────────────────────────────────────────────────────
     def _cabecera(pag):
-        # Banda azul — logo izquierda, título centrado, emisión derecha
         y1 = H - B1
         c.setFillColor(AZ1)
         c.rect(0, y1, W, B1, fill=1, stroke=0)
         c.setFillColor(BLA)
-
-        # Logo "pecepe." — izquierda
         c.setFont("Helvetica-Bold", 21)
         c.drawString(ML, y1 + 12, "pecepe.")
-
-        # Título principal — centrado y grande
         c.setFont("Helvetica-Bold", 16)
         c.drawCentredString(W / 2, y1 + 14, "TAREO DE OPERACIONES")
 
-        # Helper: distribuye N ítems simétricamente en la línea
-        def _fila_sym(y, items, font="Helvetica-Bold", size=8.5, color=TXT):
-            c.setFont(font, size)
-            c.setFillColor(color)
-            sw = (W - 2 * ML) / len(items)
-            for i, txt in enumerate(items):
-                c.drawCentredString(ML + (i + 0.5) * sw, y, txt)
+        # Fila 1 — Nombres reales de grupos (RECEPCION, ENVASADO, …)
+        _gnames = [grupo_nombre_map.get(str(g), str(g)) for g in grupos_uniq]
+        _glbl   = "  ·  ".join(_gnames) if _gnames else "TODOS LOS GRUPOS"
+        c.setFont("Helvetica-Bold", 8.5); c.setFillColor(TXT)
+        c.drawCentredString(W / 2, y1 - 14, _glbl)
 
-        # Fila 1 — Grupos / Turno / Aprobados (centrado, negrita)
-        c.setFont("Helvetica-Bold", 8.5)
-        c.setFillColor(TXT)
-        c.drawCentredString(W / 2, y1 - 16, info_hdr)
+        # Fila 2 — Periodo
+        c.setFont("Helvetica-Bold", 8); c.setFillColor(GRY)
+        c.drawCentredString(W / 2, y1 - 28,
+            f"AÑO: {año_str}   |   MES: {mes_str}   |   "
+            f"SEMANA: {sem_str}   |   FECHA(S): {fecha_str}")
 
-        # Fila 2 — Periodo (distribuida simétricamente)
-        _fila_sym(y1 - 30, [
-            f"AÑO: {año_str}",
-            f"MES: {mes_str}",
-            f"SEMANA: {sem_str}",
-            f"FECHA(S): {fecha_str}",
-        ])
+        # Fila 3 — KPIs
+        c.setFont("Helvetica", 7.5); c.setFillColor(GRY)
+        c.drawCentredString(W / 2, y1 - 42,
+            f"Registros: {total}   |   "
+            f"Aprobados: {aprobados}/{total} ({pct_apr})   |   "
+            f"TTHH: {tthh_tot:,.1f} h   |   "
+            f"Normal: {hnor_tot:,.1f} h   |   "
+            f"25%: {h25_tot:,.1f} h   |   "
+            f"35%: {h35_tot:,.1f} h")
 
-        # Fila 3 — KPIs (distribuida simétricamente)
-        _fila_sym(y1 - 46, [
-            f"Registros: {total}",
-            f"Aprobados: {aprobados}/{total} ({pct_apr})",
-            f"TTHH: {tthh_tot:.1f} h",
-            f"Normal: {hnor_tot:.1f} h",
-            f"25%: {h25_tot:.1f} h",
-            f"35%: {h35_tot:.1f} h",
-        ], font="Helvetica", size=8, color=GRY)
-
-        # Línea azul de cierre de cabecera
-        c.setStrokeColor(AZ1)
-        c.setLineWidth(1.5)
+        c.setStrokeColor(AZ1); c.setLineWidth(1.5)
         c.line(0, HDR_LINE, W, HDR_LINE)
 
-    # ── Pie de página ────────────────────────────────────────────────────────
+    # ── Pie de página (una línea: Emitido izquierda, Hoja derecha) ───────────
     def _pie(pag, total_pag):
-        # Línea divisoria superior del pie
-        c.setStrokeColor(AZ1)
-        c.setLineWidth(1.5)
+        c.setStrokeColor(AZ1); c.setLineWidth(1.5)
         c.line(0, FTR, W, FTR)
+        y_txt = FTR / 2 - 2
+        c.setFont("Helvetica", 7.5); c.setFillColor(GRY)
+        c.drawString(ML, y_txt, f"Emitido: {fecha_gen}")
+        c.drawRightString(W - MR, y_txt, f"Hoja {pag + 1}/{total_pag}")
 
-        PFOOT = 14   # franja inferior independiente (Emitido / Hoja)
-        TBAR  = 14   # título "APROBACIÓN Y AUTORIZACIÓN"
-        GAP_B = 6
-        BW    = (W - GAP_B) / 2
-        BY0   = PFOOT + 2            # base y de los bloques
-        BH    = FTR - TBAR - BY0 - 2 # 88-14-16-2 = 56 pt
 
-        # Título sin fondo coloreado
-        c.setFont("Helvetica-Bold", 8.5)
-        c.setFillColor(AZ1)
-        c.drawCentredString(W / 2, BY0 + BH + TBAR // 2 - 3,
-                            "APROBACIÓN Y AUTORIZACIÓN DEL INFORME")
+    # ── Página de aprobación y autorización por grupos ────────────────────────
+    def _pagina_aprobacion():
+        verde = rc.HexColor("#10B981")
+        rojo  = rc.HexColor("#EF4444")
+        bgs   = [rc.HexColor("#F1F5FB"), BLA]
 
-        # ── Bloque IZQUIERDO: Coordinador ──────────────────────────────────
-        bx0 = 0
-        c.setFillColor(BLA); c.setStrokeColor(AZ1); c.setLineWidth(0.5)
-        c.rect(bx0, BY0, BW, BH, fill=1, stroke=1)
+        ty = ca_top - 12
+        c.setFont("Helvetica-Bold", 13); c.setFillColor(AZ1)
+        c.drawCentredString(W / 2, ty, "APROBACIÓN Y AUTORIZACIÓN DE GRUPOS")
+        c.setFont("Helvetica", 8.5); c.setFillColor(GRY)
+        c.drawCentredString(W / 2, ty - 16,
+            "Registro de aprobación por supervisor y autorización por coordinador")
 
-        c.setFont("Helvetica-Bold", 8.5); c.setFillColor(AZ1)
-        c.drawString(bx0 + 8, BY0 + BH - 14, "COORDINADOR")
-        c.setFont("Helvetica-Bold", 9); c.setFillColor(TXT)
-        c.drawString(bx0 + 8, BY0 + BH - 27, coordinador if coordinador else "—")
+        TX   = ML
+        TW   = W - ML - MR
+        C0   = 115
+        C1   = (TW - C0) // 2
+        C2   = TW - C0 - C1
+        cxs  = [TX, TX + C0, TX + C0 + C1]
+        cws  = [C0, C1, C2]
+        HH, RH = 28, 30
+        tbl  = ty - 44
+
+        hdrs = [
+            ("GRUPO", None),
+            ("SUPERVISOR", "Fecha y hora de aprobacion"),
+            (f"COORDINADOR: {coordinador or '—'}", "Fecha y hora de autorizacion"),
+        ]
+        for (l1, l2), cx_i, cw_i in zip(hdrs, cxs, cws):
+            c.setFillColor(AZ1); c.setStrokeColor(BLA); c.setLineWidth(0.5)
+            c.rect(cx_i, tbl - HH, cw_i, HH, fill=1, stroke=1)
+            c.setFillColor(BLA)
+            if l2:
+                c.setFont("Helvetica-Bold", 8)
+                c.drawCentredString(cx_i + cw_i / 2, tbl - HH + 16, l1)
+                c.setFont("Helvetica", 7)
+                c.drawCentredString(cx_i + cw_i / 2, tbl - HH + 6, l2)
+            else:
+                c.setFont("Helvetica-Bold", 8.5)
+                c.drawCentredString(cx_i + cw_i / 2, tbl - HH + 10, l1)
+
+        ry = tbl - HH
+        for i, g in enumerate(grupos_uniq):
+            ry -= RH
+            ng = grupo_nombre_map.get(str(g), str(g))
+            ts = apro_por_grupo.get(str(g))
+            bg = bgs[i % 2]
+            for cx_i, cw_i in zip(cxs, cws):
+                c.setFillColor(bg); c.setStrokeColor(BRD); c.setLineWidth(0.4)
+                c.rect(cx_i, ry, cw_i, RH, fill=1, stroke=1)
+            c.setFont("Helvetica-Bold", 9); c.setFillColor(AZ1)
+            c.drawCentredString(cxs[0] + cws[0] / 2, ry + RH / 2 - 4, ng)
+            if ts:
+                c.setFont("Helvetica-Bold", 7.5); c.setFillColor(verde)
+                c.drawString(cxs[1] + 8, ry + RH - 11, "APROBADO")
+                c.setFont("Helvetica", 8); c.setFillColor(TXT)
+                c.drawString(cxs[1] + 8, ry + RH - 23, ts)
+            else:
+                c.setFont("Helvetica-Bold", 8); c.setFillColor(rojo)
+                c.drawCentredString(cxs[1] + cws[1] / 2, ry + RH / 2 - 4, "PENDIENTE")
+            if ts:
+                c.setFont("Helvetica-Bold", 7.5); c.setFillColor(AZ1)
+                c.drawString(cxs[2] + 8, ry + RH - 11, coordinador or "—")
+                c.setFont("Helvetica", 8); c.setFillColor(TXT)
+                c.drawString(cxs[2] + 8, ry + RH - 23, fecha_gen)
+            else:
+                c.setFont("Helvetica", 8); c.setFillColor(GRY)
+                c.drawCentredString(cxs[2] + cws[2] / 2, ry + RH / 2 - 4, "—")
+
         c.setFont("Helvetica", 7); c.setFillColor(GRY)
-        c.drawString(bx0 + 8, BY0 + BH - 40, "Nombre del coordinador responsable")
-
-        # ── Bloque DERECHO: Aprobación por grupo ───────────────────────────
-        bx1 = BW + GAP_B
-        c.setFillColor(BLA); c.setStrokeColor(AZ1); c.setLineWidth(0.5)
-        c.rect(bx1, BY0, BW, BH, fill=1, stroke=1)
-
-        c.setFont("Helvetica-Bold", 7.5); c.setFillColor(AZ1)
-        c.drawString(bx1 + 8, BY0 + BH - 12, "APROBACIÓN POR GRUPO")
-
-        _gy = BY0 + BH - 24   # y inicial para listar grupos
-        _step = 10             # paso vertical por fila
-        for _g in grupos_uniq:
-            _nombre_g = grupo_nombre_map.get(str(_g), str(_g))
-            _ts_str   = apro_por_grupo.get(str(_g), "Pendiente")
-            c.setFont("Helvetica-Bold", 6.5); c.setFillColor(TXT)
-            c.drawString(bx1 + 8, _gy, f"{_nombre_g}:")
-            c.setFont("Helvetica", 6.5); c.setFillColor(GRY)
-            c.drawString(bx1 + 8 + 55, _gy, _ts_str)
-            _gy -= _step
-            if _gy < BY0 + 4:   # no salir del bloque
-                break
-
-        # ── Franja inferior: Emitido (centro-derecha) · Hoja X/Y (extremo derecho)
-        c.setFont("Helvetica", 7)
-        c.setFillColor(GRY)
-        c.drawRightString(W / 2 + 60, PFOOT // 2 - 2, f"Emitido: {fecha_gen}")
-        c.drawRightString(W - MR, PFOOT // 2 - 2,
-                          f"Hoja {pag + 1}/{total_pag}")
+        c.drawString(TX, ry - 14,
+            "* Coordinador: fecha y hora corresponde al momento de generacion del PDF (hora Lima, Peru).")
 
     # ── Dibujar páginas ──────────────────────────────────────────────────────
     per_page   = COLS * ROWS
     total_img  = max(len(imgs), 1)
-    total_pag  = (total_img + per_page - 1) // per_page
+    pag_charts = (total_img + per_page - 1) // per_page
+    total_pag  = pag_charts + 1   # +1 para la página de aprobación
 
     for pag_n, inicio in enumerate(range(0, total_img, per_page)):
         _cabecera(pag_n)
@@ -1040,6 +1032,12 @@ def generar_pdf_graficos(df: "pd.DataFrame", titulo: str = "INFORME DE OPERACION
                 pass
 
         c.showPage()
+
+    # ── Página de aprobación (última hoja) ───────────────────────────────────
+    _cabecera(pag_charts)
+    _pagina_aprobacion()
+    _pie(pag_charts, total_pag)
+    c.showPage()
 
     c.save()
     return buf.getvalue()
