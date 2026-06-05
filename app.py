@@ -316,19 +316,27 @@ if tab_cargar is not None:
                 "Semana ISO", _sem_lbls, index=_sem_def, key="per_semana")
             _sem_sel = _semanas[_sem_lbls.index(_sem_sel_lbl)]
 
-            st.markdown(f"**Días de la semana {_sem_sel['label']}:**")
+            st.markdown(f"**📆 Semana {_sem_sel['label']}** — marca los días a trabajar:")
             _cols_d = st.columns(7)
+            _fechas_periodo = []
             for _col_d, _dia in zip(_cols_d, _sem_sel["dias"]):
-                _bg = "#1F4E9B" if _dia["en_mes"] else "#E5E7EB"
-                _fc = "#FFFFFF" if _dia["en_mes"] else "#6B7280"
+                _bg = "#EEF2FF" if _dia["en_mes"] else "#F3F4F6"
+                _fc = "#1F4E9B" if _dia["en_mes"] else "#9CA3AF"
                 _col_d.markdown(
-                    f'<div style="background:{_bg};color:{_fc};border-radius:8px;'
-                    f'padding:8px 4px;text-align:center;">'
-                    f'<b style="font-size:0.72rem">{_dia["nombre"][:3].upper()}</b>'
-                    f'<br><span style="font-size:0.85rem">'
+                    f'<div style="background:{_bg};border-radius:8px 8px 0 0;'
+                    f'padding:8px 4px 2px 4px;text-align:center;">'
+                    f'<b style="font-size:0.72rem;color:{_fc}">'
+                    f'{_dia["nombre"][:3].upper()}</b>'
+                    f'<br><span style="font-size:0.85rem;color:#374151">'
                     f'{_dia["fecha"].strftime("%d/%m")}</span></div>',
                     unsafe_allow_html=True,
                 )
+                if _col_d.checkbox(
+                    "sel", value=_dia["en_mes"],
+                    key=f"dia_{_dia['fecha'].isoformat()}",
+                    label_visibility="collapsed",
+                ):
+                    _fechas_periodo.append(_dia["fecha"])
 
         st.write("")
         archivo = st.file_uploader(
@@ -367,13 +375,29 @@ if tab_cargar is not None:
 
         if st.session_state.tabla is not None:
             df = st.session_state.tabla
+
+            # Filtrar vista por días seleccionados en el selector de periodo
+            if _fechas_periodo:
+                _mask_p = pd.to_datetime(
+                    df["FECHA"], errors="coerce").dt.date.isin(_fechas_periodo)
+                df_per = df[_mask_p]
+            else:
+                df_per = df
+
             c1, c2, c3, c4 = st.columns(4)
-            c1.metric("Registros", len(df))
-            c2.metric("Turno NOCHE", int((df["TURNO"] == "NOCHE").sum()))
-            c3.metric("Corrido (C)", int(df["Corrido"].sum()))
-            c4.metric("Teórico 12 h", int(df["Teorico12"].sum()))
+            c1.metric("Registros", len(df_per))
+            c2.metric("Turno NOCHE", int((df_per["TURNO"] == "NOCHE").sum()))
+            c3.metric("Corrido (C)", int(df_per["Corrido"].sum()))
+            c4.metric("Teórico 12 h", int(df_per["Teorico12"].sum()))
+            if len(df_per) < len(df):
+                st.caption(
+                    f"Periodo seleccionado: {len(df_per)} de {len(df)} "
+                    "registros totales")
+            elif not _fechas_periodo:
+                st.warning("Selecciona al menos un día en el periodo de trabajo.")
+
             # Resumen semanal en tab Cargar
-            df_sem_c = dash.agregar_cols_fecha(df)
+            df_sem_c = dash.agregar_cols_fecha(df_per)
             df_sem_c = df_sem_c.dropna(subset=["_SEMANA_NUM"])
             if not df_sem_c.empty:
                 sem_tbl = df_sem_c.groupby(
@@ -389,7 +413,7 @@ if tab_cargar is not None:
                     st.dataframe(sem_tbl, use_container_width=True, hide_index=True)
 
             st.dataframe(
-                df[["NOMBRES", "GRUPO", "SERVICE", "FECHA", "TURNO", "ENTRADA",
+                df_per[["NOMBRES", "GRUPO", "SERVICE", "FECHA", "TURNO", "ENTRADA",
                     "SALIDA", "HORAS_MARC_HHMM"]],
                 use_container_width=True, hide_index=True,
                 column_config={
