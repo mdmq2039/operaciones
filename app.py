@@ -147,8 +147,8 @@ def persistir_subset(mask) -> None:
 if st.session_state.user is None:
     mostrar_logo(64)
     st.markdown(
-        '<div style="font-size:1.9rem;font-weight:800;color:#1f3864;">'
-        '🕒 Tareo de Operaciones — PECEPE</div>', unsafe_allow_html=True)
+        '<div class="titulo-app">🕒 Tareo de Operaciones</div>',
+        unsafe_allow_html=True)
     st.markdown("#### Iniciar sesión")
     with st.form("login"):
         u = st.text_input("Usuario")
@@ -324,7 +324,7 @@ if tab_cargar is not None:
                     "Semana ISO", _sem_lbls, index=_sem_def, key="per_semana")
             _sem_sel = _semanas[_sem_lbls.index(_sem_sel_lbl)]
 
-            # Selector de días como multiselect (funciona bien en celular)
+            # Selector de día único (selectbox compacto, igual estilo que Año/Mes/Semana)
             _dia_opts = [
                 f'{_dia["nombre"]} {_dia["fecha"].strftime("%d/%m/%Y")}'
                 for _dia in _sem_sel["dias"]
@@ -333,28 +333,39 @@ if tab_cargar is not None:
                 f'{_dia["nombre"]} {_dia["fecha"].strftime("%d/%m/%Y")}': _dia["fecha"]
                 for _dia in _sem_sel["dias"]
             }
-            _default_dias = [
-                f'{_dia["nombre"]} {_dia["fecha"].strftime("%d/%m/%Y")}'
-                for _dia in _sem_sel["dias"] if _dia["en_mes"]
-            ]
-            _dias_sel = st.multiselect(
-                "Días de la semana a trabajar:",
-                _dia_opts,
-                default=_default_dias,
-                key="per_dias",
-                help="Selecciona uno o varios días. Solo los datos de esas fechas "
-                     "se mostrarán y se usarán al aprobar.",
+            # Índice por defecto: hoy si está en la semana, si no el primer día del mes
+            _def_dia = 0
+            _hoy = _ahora.date()
+            for _i, _dia in enumerate(_sem_sel["dias"]):
+                if _dia["fecha"] == _hoy:
+                    _def_dia = _i
+                    break
+            else:
+                for _i, _dia in enumerate(_sem_sel["dias"]):
+                    if _dia["en_mes"]:
+                        _def_dia = _i
+                        break
+
+            _pc4, _pc5, _pc6 = st.columns(3)
+            with _pc4:
+                _dia_sel_str = st.selectbox(
+                    "Día", _dia_opts, index=_def_dia, key="per_dia")
+            _fecha_periodo = _dia_fecha_map[_dia_sel_str]
+            _fechas_periodo = [_fecha_periodo]
+
+            # Tarjeta de color para el día seleccionado
+            _nom_dia = dash.DIAS_ES[_fecha_periodo.weekday()]
+            _nom_mes = dash.MESES_ES[_fecha_periodo.month]
+            st.markdown(
+                f'<div style="background:#1F4E9B;color:white;border-radius:8px;'
+                f'padding:10px 16px;margin-top:10px;font-weight:700;font-size:0.95rem;">'
+                f'📅 &nbsp;{_nom_dia} {_fecha_periodo.day} de {_nom_mes} de {_fecha_periodo.year}'
+                f'</div>',
+                unsafe_allow_html=True,
             )
-            _fechas_periodo = [_dia_fecha_map[d] for d in _dias_sel]
 
             # Guardar en session state para Dashboard y Aprobación
             st.session_state["_per_fechas"] = _fechas_periodo
-            if _fechas_periodo:
-                _resumen = " · ".join(
-                    f"{dash.DIAS_ES[f.weekday()][:3]} {f.strftime('%d/%m')}"
-                    for f in _fechas_periodo
-                )
-                st.success(f"Periodo activo: {len(_fechas_periodo)} día(s) — {_resumen}")
 
         st.write("")
         archivo = st.file_uploader(
