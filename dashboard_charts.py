@@ -738,43 +738,113 @@ def generar_pdf_graficos(df: "pd.DataFrame", titulo: str = "GRÁFICOS DASHBOARD"
     except Exception:
         pass
 
-    # Layout A4: 2 columnas x 4 filas = 8 graficos por hoja
-    W, H = A4
+    # ── Meta datos del periodo (extraídos del df filtrado) ──────────────────
+    fechas = pd.to_datetime(df["FECHA"], errors="coerce").dropna()
+    años   = sorted(fechas.dt.year.unique().astype(int))
+    meses  = sorted(fechas.dt.month.unique().astype(int))
+    año_str = " / ".join(str(a) for a in años) if años else "—"
+    mes_str = " / ".join(MESES_ES.get(m, str(m)) for m in meses) if meses else "—"
+    if "_SEMANA_LABEL" in df.columns:
+        sems = sorted({s for s in df["_SEMANA_LABEL"].tolist() if s})
+        sem_str = " / ".join(sems) if sems else "—"
+    else:
+        sem_str = "—"
+    if len(fechas) > 0:
+        dias = sorted(fechas.dt.date.unique())
+        if len(dias) == 1:
+            fecha_str = dias[0].strftime("%d/%m/%Y")
+        elif len(dias) <= 3:
+            fecha_str = "  |  ".join(d.strftime("%d/%m/%Y") for d in dias)
+        else:
+            fecha_str = f"{dias[0].strftime('%d/%m')} – {dias[-1].strftime('%d/%m/%Y')}"
+    else:
+        fecha_str = "—"
+    total    = len(df)
+    aprobados = int(df["Aprobado"].sum()) if "Aprobado" in df.columns else 0
+    pct_apr  = f"{aprobados / total * 100:.0f}%" if total > 0 else "0%"
+    tthh_tot = float(df["TTHH"].sum())     if "TTHH"     in df.columns else 0.0
+    h25_tot  = float(df["hora 25"].sum())  if "hora 25"  in df.columns else 0.0
+    h35_tot  = float(df["hora 35"].sum())  if "hora 35"  in df.columns else 0.0
+    fecha_gen = _dt2.datetime.now().strftime("%d/%m/%Y  %H:%M")
+
+    # ── Layout A4: 2 columnas × 3 filas = 6 gráficos por hoja ──────────────
+    W, H  = A4
     ML = MR = 14
-    MT = MB = 14
-    TITLE_H = 28
-    COLS, ROWS = 2, 4
-    GAP = 6
+    MB    = 14
+    BAND  = 32    # alto de la banda azul superior
+    HDR   = 84    # alto total de cabecera (band + título + info + separador)
+    COLS, ROWS = 2, 3
+    GAP   = 8
 
     chart_w = (W - ML - MR - GAP) / COLS
-    chart_h = (H - MT - MB - TITLE_H - (ROWS - 1) * GAP) / ROWS
-    azul = rc.HexColor("#1F4E9B")
+    chart_h = (H - HDR - MB - (ROWS - 1) * GAP) / ROWS
+    azul  = rc.HexColor("#1F4E9B")
+    gris  = rc.HexColor("#374151")
+    blanco = rc.white
 
     buf = BytesIO()
     c = _canvas.Canvas(buf, pagesize=A4)
 
     def _cabecera(pag):
-        c.setFont("Helvetica-Bold", 13)
+        # Banda azul superior
         c.setFillColor(azul)
-        sufijo = f"  ({pag + 1})" if pag > 0 else ""
-        c.drawString(ML, H - MT - 15, titulo + sufijo)
-        c.setFont("Helvetica", 7)
-        c.setFillColor(rc.HexColor("#5b6770"))
-        hoy = _dt2.date.today().strftime("%d/%m/%Y")
-        c.drawRightString(W - MR, H - MT - 15, f"PECEPE · {hoy}")
-        c.setStrokeColor(azul)
-        c.setLineWidth(0.5)
-        c.line(ML, H - MT - TITLE_H, W - MR, H - MT - TITLE_H)
+        c.rect(0, H - BAND, W, BAND, fill=1, stroke=0)
 
-    total_imgs = max(len(imgs), 1)
+        # Logo "pecepe." en blanco
+        c.setFillColor(blanco)
+        c.setFont("Helvetica-Bold", 19)
+        c.drawString(ML, H - BAND + 7, "pecepe.")
+
+        # Subtítulo empresa
+        c.setFont("Helvetica-Bold", 7)
+        c.drawString(ML + 98, H - BAND + 12, "TAREO DE OPERACIONES")
+
+        # Fecha generación (derecha)
+        c.setFont("Helvetica", 7)
+        c.drawRightString(W - MR, H - BAND + 12, f"Generado: {fecha_gen}")
+        if pag > 0:
+            c.drawRightString(W - MR, H - BAND + 3, f"Hoja {pag + 1}")
+
+        # Título del reporte
+        c.setFont("Helvetica-Bold", 12)
+        c.setFillColor(azul)
+        c.drawString(ML, H - BAND - 16, titulo)
+
+        # Línea fina bajo el título
+        c.setStrokeColor(rc.HexColor("#C7D2E8"))
+        c.setLineWidth(0.4)
+        c.line(ML, H - BAND - 22, W - MR, H - BAND - 22)
+
+        # Info línea 1: Periodo
+        c.setFont("Helvetica-Bold", 7.5)
+        c.setFillColor(gris)
+        c.drawString(ML, H - BAND - 34,
+                     f"Año: {año_str}   |   Mes: {mes_str}   |   "
+                     f"Semana: {sem_str}   |   Fecha(s): {fecha_str}")
+
+        # Info línea 2: KPIs
+        c.setFont("Helvetica", 7.5)
+        c.drawString(ML, H - BAND - 46,
+                     f"Registros: {total}   |   "
+                     f"Aprobados: {aprobados} / {total} ({pct_apr})   |   "
+                     f"TTHH: {tthh_tot:,.1f} h   |   "
+                     f"Hora 25%: {h25_tot:,.1f} h   |   "
+                     f"Hora 35%: {h35_tot:,.1f} h")
+
+        # Línea separadora azul
+        c.setStrokeColor(azul)
+        c.setLineWidth(0.9)
+        c.line(ML, H - BAND - 54, W - MR, H - BAND - 54)
+
     per_page = COLS * ROWS
+    total_imgs = max(len(imgs), 1)
     for pag_n, inicio in enumerate(range(0, total_imgs, per_page)):
         _cabecera(pag_n)
         for i, (_, img_buf) in enumerate(imgs[inicio:inicio + per_page]):
             col = i % COLS
             row = i // COLS
             x = ML + col * (chart_w + GAP)
-            y = H - MT - TITLE_H - (row + 1) * chart_h - row * GAP
+            y = H - HDR - (row + 1) * chart_h - row * GAP
             img_buf.seek(0)
             try:
                 c.drawImage(ImageReader(img_buf), x, y,
