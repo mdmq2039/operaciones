@@ -390,6 +390,10 @@ if tab_cargar is not None:
                     else:
                         df_sis = core.cargar_tareo_sistema(fuente)
                         tabla_nueva = core.construir_tabla_trabajo(df_sis, cfg())
+                        # Si el Excel no trae fechas, usar la fecha del periodo seleccionado
+                        _null_fecha = pd.to_datetime(tabla_nueva["FECHA"], errors="coerce").isna()
+                        if _null_fecha.any() and _fechas_periodo:
+                            tabla_nueva.loc[_null_fecha, "FECHA"] = pd.Timestamp(_fechas_periodo[0])
                         reemplazar_estado(tabla_nueva)
                         st.session_state.tabla = cargar_estado_app()
                         st.success(f"✅ Procesados {len(st.session_state.tabla)} registros. "
