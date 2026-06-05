@@ -943,12 +943,10 @@ def generar_pdf_graficos(df: "pd.DataFrame", titulo: str = "INFORME DE OPERACION
             c.setLineWidth(0.5)
             c.rect(bx, BY, BW, BH, fill=1, stroke=1)
 
-            # Mini cabecera del bloque
+            # Mini cabecera del bloque (sin fondo, texto azul oscuro)
             MH = 14
-            c.setFillColor(AZ1)
-            c.rect(bx, BY + BH - MH, BW, MH, fill=1, stroke=0)
             c.setFont("Helvetica-Bold", 8.5)
-            c.setFillColor(BLA)
+            c.setFillColor(AZ1)
             c.drawString(bx + 8, BY + BH - MH + 4, rol)
 
             # Posiciones de contenido (desde el bottom-left del bloque)
