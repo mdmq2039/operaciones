@@ -865,6 +865,51 @@ if tab_users is not None:
                     st.rerun()
 
 # --------------------------------------------------------------------------- #
+#  TAB AUDITORÍA (sólo rol "auditor")                                          #
+# --------------------------------------------------------------------------- #
+if tab_auditoria is not None:
+    with tab_auditoria:
+        st.subheader("🔍 Registro de accesos — Auditoría")
+        if not db.enabled():
+            st.warning("La auditoría requiere base de datos (DATABASE_URL no configurada).")
+        else:
+            try:
+                df_aud = db.auditoria_load()
+                if df_aud.empty:
+                    st.info("No hay registros de acceso todavía.")
+                else:
+                    df_aud = df_aud.rename(columns={
+                        "usuario":      "Usuario",
+                        "entrada":      "Fecha/Hora Entrada",
+                        "salida":       "Fecha/Hora Salida",
+                        "duracion_min": "Duración (min)",
+                        "ip":           "IP",
+                        "dispositivo":  "Dispositivo",
+                        "user_agent":   "User-Agent",
+                    })
+                    if "Duración (min)" in df_aud.columns:
+                        df_aud["Duración (min)"] = df_aud["Duración (min)"].apply(
+                            lambda x: f"{x:.1f}" if pd.notna(x) else "Activo")
+                    total   = len(df_aud)
+                    activos = (df_aud["Duración (min)"] == "Activo").sum()
+                    m1, m2, m3 = st.columns(3)
+                    m1.metric("Total sesiones",  total)
+                    m2.metric("Sesiones activas", activos)
+                    m3.metric("Usuarios únicos",  df_aud["Usuario"].nunique())
+                    cols_mostrar = ["Usuario", "Fecha/Hora Entrada", "Fecha/Hora Salida",
+                                    "Duración (min)", "IP", "Dispositivo"]
+                    st.dataframe(df_aud[cols_mostrar],
+                                 use_container_width=True, hide_index=True)
+                    with st.expander("Ver detalle completo (User-Agent)"):
+                        st.dataframe(df_aud, use_container_width=True, hide_index=True)
+                    if st.button("🔄 Actualizar"):
+                        st.rerun()
+            except Exception as _e:
+                st.error(f"Error cargando auditoría: {_e}")
+    mostrar_pie()
+    st.stop()
+
+# --------------------------------------------------------------------------- #
 #  TAB Dashboard (coordinador y supervisor)                                    #
 # --------------------------------------------------------------------------- #
 with tab_dashboard:
@@ -1295,60 +1340,6 @@ with tab_compartir:
                     "3. Mantén presionado el PDF → toca **Compartir**\n"
                     "4. Elige **WhatsApp** → selecciona contacto o grupo → envía"
                 )
-
-
-# --------------------------------------------------------------------------- #
-#  TAB AUDITORÍA (sólo rol "auditor")                                          #
-# --------------------------------------------------------------------------- #
-if tab_auditoria is not None:
-    with tab_auditoria:
-        st.subheader("🔍 Registro de accesos — Auditoría")
-        if not db.enabled():
-            st.warning("La auditoría requiere base de datos (DATABASE_URL no configurada).")
-        else:
-            try:
-                df_aud = db.auditoria_load()
-                if df_aud.empty:
-                    st.info("No hay registros de acceso todavía.")
-                else:
-                    # Renombrar columnas para mostrar
-                    df_aud = df_aud.rename(columns={
-                        "usuario":     "Usuario",
-                        "entrada":     "Fecha/Hora Entrada",
-                        "salida":      "Fecha/Hora Salida",
-                        "duracion_min": "Duración (min)",
-                        "ip":          "IP",
-                        "dispositivo": "Dispositivo",
-                        "user_agent":  "User-Agent",
-                    })
-                    # Formatear duración
-                    if "Duración (min)" in df_aud.columns:
-                        df_aud["Duración (min)"] = df_aud["Duración (min)"].apply(
-                            lambda x: f"{x:.1f}" if pd.notna(x) else "Activo")
-                    # Métricas rápidas
-                    total = len(df_aud)
-                    activos = (df_aud["Duración (min)"] == "Activo").sum()
-                    m1, m2, m3 = st.columns(3)
-                    m1.metric("Total sesiones", total)
-                    m2.metric("Sesiones activas", activos)
-                    m3.metric("Usuarios únicos",
-                              df_aud["Usuario"].nunique())
-
-                    # Tabla principal (sin user_agent para ahorrar espacio)
-                    cols_mostrar = ["Usuario", "Fecha/Hora Entrada", "Fecha/Hora Salida",
-                                    "Duración (min)", "IP", "Dispositivo"]
-                    st.dataframe(df_aud[cols_mostrar],
-                                 use_container_width=True, hide_index=True)
-
-                    # Detalle con user-agent en expander
-                    with st.expander("Ver detalle completo (User-Agent)"):
-                        st.dataframe(df_aud, use_container_width=True, hide_index=True)
-
-                    # Botón para recargar
-                    if st.button("🔄 Actualizar"):
-                        st.rerun()
-            except Exception as _e:
-                st.error(f"Error cargando auditoría: {_e}")
 
 
 # --------------------------------------------------------------------------- #
