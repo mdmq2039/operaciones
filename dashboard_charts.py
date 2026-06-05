@@ -579,7 +579,13 @@ def generar_pdf_graficos(df: "pd.DataFrame", titulo: str = "INFORME DE OPERACION
         for turno, color in [("DIA", AM), ("NOCHE", AN)]:
             if turno in cnt2.columns:
                 vals = cnt2[turno].values.astype(float)
-                ax.bar(cnt2.index.astype(str), vals, bottom=bottom, label=turno, color=color)
+                bars_g = ax.bar(cnt2.index.astype(str), vals, bottom=bottom, label=turno, color=color)
+                for bar, v in zip(bars_g, vals):
+                    if v > 0:
+                        ax.text(bar.get_x() + bar.get_width() / 2,
+                                bar.get_y() + bar.get_height() / 2,
+                                str(int(v)), ha="center", va="center",
+                                fontsize=7, color="white", fontweight="bold")
                 bottom = vals.copy() if bottom is None else bottom + vals
         ax.set_xlabel("Grupo", fontsize=8)
         ax.set_ylabel("Personas", fontsize=8)
@@ -618,8 +624,11 @@ def generar_pdf_graficos(df: "pd.DataFrame", titulo: str = "INFORME DE OPERACION
         fig, ax = plt.subplots(figsize=(4.5, 3.2))
         bars = ax.barh(agg4["GRUPO"].astype(str), agg4["HORAS_MARCACION"], color=AZ)
         for bar, val in zip(bars, agg4["HORAS_MARCACION"]):
-            ax.text(val + 0.05, bar.get_y() + bar.get_height() / 2,
-                    f"{val:.1f}h", va="center", fontsize=7)
+            if val > 0:
+                ax.text(bar.get_x() + bar.get_width() / 2,
+                        bar.get_y() + bar.get_height() / 2,
+                        f"{val:.1f}h", ha="center", va="center",
+                        fontsize=7, color="white", fontweight="bold")
         ax.set_xlabel("Horas promedio", fontsize=8)
         ax.set_title("Prom. Horas Marcacion por Grupo", color=AZ, fontweight="bold", fontsize=10)
         ax.tick_params(labelsize=7)
@@ -640,8 +649,14 @@ def generar_pdf_graficos(df: "pd.DataFrame", titulo: str = "INFORME DE OPERACION
                                      ("hora 35", RO, "Hora 35%")]:
                 if col in cols_t:
                     vals = agg5[col].values.astype(float)
-                    ax.bar(agg5["GRUPO"].astype(str), vals, bottom=bottom,
-                           label=lbl, color=color)
+                    bars_t = ax.bar(agg5["GRUPO"].astype(str), vals, bottom=bottom,
+                                    label=lbl, color=color)
+                    for bar, v in zip(bars_t, vals):
+                        if v > 0:
+                            ax.text(bar.get_x() + bar.get_width() / 2,
+                                    bar.get_y() + bar.get_height() / 2,
+                                    f"{v:.1f}", ha="center", va="center",
+                                    fontsize=6, color="white", fontweight="bold")
                     bottom = vals.copy() if bottom is None else bottom + vals
             ax.set_xlabel("Grupo", fontsize=8)
             ax.set_ylabel("Horas", fontsize=8)
@@ -682,10 +697,22 @@ def generar_pdf_graficos(df: "pd.DataFrame", titulo: str = "INFORME DE OPERACION
             agg7["Pendientes"] = agg7["Total"] - agg7["Aprobados"]
             agg7 = agg7.sort_values("Total")
             fig, ax = plt.subplots(figsize=(4.5, 3.2))
-            ax.barh(agg7["GRUPO"].astype(str), agg7["Aprobados"],
-                    color=VE, label="Aprobados")
-            ax.barh(agg7["GRUPO"].astype(str), agg7["Pendientes"],
-                    left=agg7["Aprobados"].values, color=GR, label="Pendientes")
+            bars_a = ax.barh(agg7["GRUPO"].astype(str), agg7["Aprobados"],
+                             color=VE, label="Aprobados")
+            for bar, v in zip(bars_a, agg7["Aprobados"]):
+                if v > 0:
+                    ax.text(bar.get_x() + bar.get_width() / 2,
+                            bar.get_y() + bar.get_height() / 2,
+                            str(int(v)), ha="center", va="center",
+                            fontsize=7, color="white", fontweight="bold")
+            bars_p = ax.barh(agg7["GRUPO"].astype(str), agg7["Pendientes"],
+                             left=agg7["Aprobados"].values, color=GR, label="Pendientes")
+            for bar, v in zip(bars_p, agg7["Pendientes"]):
+                if v > 0:
+                    ax.text(bar.get_x() + bar.get_width() / 2,
+                            bar.get_y() + bar.get_height() / 2,
+                            str(int(v)), ha="center", va="center",
+                            fontsize=7, color="#1E293B", fontweight="bold")
             ax.set_xlabel("Personas", fontsize=8)
             ax.set_title("Estado de Aprobacion por Grupo", color=AZ, fontweight="bold", fontsize=10)
             ax.legend(fontsize=7, loc="upper right")
@@ -711,7 +738,13 @@ def generar_pdf_graficos(df: "pd.DataFrame", titulo: str = "INFORME DE OPERACION
             for turno, color in [("DIA", AM), ("NOCHE", AN)]:
                 sub = sw[sw["TURNO"] == turno].set_index("_SEMANA_NUM")
                 vals = [float(sub.loc[n, "Reg"]) if n in sub.index else 0 for n in nums_s]
-                ax.bar(range(len(nums_s)), vals, bottom=bottom, label=turno, color=color)
+                bars_sw = ax.bar(range(len(nums_s)), vals, bottom=bottom, label=turno, color=color)
+                for bar, v in zip(bars_sw, vals):
+                    if v > 0:
+                        ax.text(bar.get_x() + bar.get_width() / 2,
+                                bar.get_y() + bar.get_height() / 2,
+                                str(int(v)), ha="center", va="center",
+                                fontsize=6, color="white", fontweight="bold")
                 bottom = [v for v in vals] if bottom is None else [b + v for b, v in zip(bottom, vals)]
             ax.set_xticks(range(len(nums_s)))
             ax.set_xticklabels(labels_s, rotation=30, ha="right", fontsize=6)
@@ -731,7 +764,14 @@ def generar_pdf_graficos(df: "pd.DataFrame", titulo: str = "INFORME DE OPERACION
                                          ("hora 35", RO, "Hora 35%")]:
                     if col in cols_tw:
                         vals = agg_sw[col].values.astype(float)
-                        ax.bar(range(len(agg_sw)), vals, bottom=bottom, label=lbl, color=color)
+                        bars_sw2 = ax.bar(range(len(agg_sw)), vals, bottom=bottom,
+                                          label=lbl, color=color)
+                        for bar, v in zip(bars_sw2, vals):
+                            if v > 0:
+                                ax.text(bar.get_x() + bar.get_width() / 2,
+                                        bar.get_y() + bar.get_height() / 2,
+                                        f"{v:.1f}", ha="center", va="center",
+                                        fontsize=6, color="white", fontweight="bold")
                         bottom = vals.copy() if bottom is None else bottom + vals
                 ax.set_xticks(range(len(agg_sw)))
                 ax.set_xticklabels(agg_sw["_SEMANA_LABEL"].tolist(), rotation=30, ha="right", fontsize=6)
@@ -835,25 +875,31 @@ def generar_pdf_graficos(df: "pd.DataFrame", titulo: str = "INFORME DE OPERACION
         if pag > 0:
             c.drawRightString(W - MR, y1 + 20, f"Hoja {pag + 1}")
 
-        # Fila 2 — Periodo (fondo blanco, texto oscuro, sin relleno de color)
-        y_per = y1 - 18            # baseline
-        c.setFont("Helvetica-Bold", 8.5)
-        c.setFillColor(TXT)
-        c.drawString(ML, y_per,
-                     f"AÑO: {año_str}   |   MES: {mes_str}   |   "
-                     f"SEMANA: {sem_str}   |   FECHA(S): {fecha_str}")
+        # Helper: distribuye N ítems simétricamente en la línea
+        def _fila_sym(y, items, font="Helvetica-Bold", size=8.5, color=TXT):
+            c.setFont(font, size)
+            c.setFillColor(color)
+            sw = (W - 2 * ML) / len(items)
+            for i, txt in enumerate(items):
+                c.drawCentredString(ML + (i + 0.5) * sw, y, txt)
 
-        # Fila 3 — KPIs (fondo blanco, texto gris oscuro)
-        y_kpi = y1 - 34            # baseline
-        c.setFont("Helvetica", 8)
-        c.setFillColor(GRY)
-        c.drawString(ML, y_kpi,
-                     f"Registros: {total}   |   "
-                     f"Aprobados: {aprobados} / {total} ({pct_apr})   |   "
-                     f"TTHH: {tthh_tot:,.1f} h   |   "
-                     f"Normal: {hnor_tot:,.1f} h   |   "
-                     f"25%: {h25_tot:,.1f} h   |   "
-                     f"35%: {h35_tot:,.1f} h")
+        # Fila 2 — Periodo (distribuida simétricamente)
+        _fila_sym(y1 - 18, [
+            f"AÑO: {año_str}",
+            f"MES: {mes_str}",
+            f"SEMANA: {sem_str}",
+            f"FECHA(S): {fecha_str}",
+        ])
+
+        # Fila 3 — KPIs (distribuida simétricamente)
+        _fila_sym(y1 - 34, [
+            f"Registros: {total}",
+            f"Aprobados: {aprobados}/{total} ({pct_apr})",
+            f"TTHH: {tthh_tot:.1f} h",
+            f"Normal: {hnor_tot:.1f} h",
+            f"25%: {h25_tot:.1f} h",
+            f"35%: {h35_tot:.1f} h",
+        ], font="Helvetica", size=8, color=GRY)
 
         # Línea azul de cierre de cabecera
         c.setStrokeColor(AZ1)
@@ -879,9 +925,9 @@ def generar_pdf_graficos(df: "pd.DataFrame", titulo: str = "INFORME DE OPERACION
         c.drawString(ML, FTR - TBAR + 5, f"Emitido: {fecha_gen}")
         c.drawRightString(W - MR, FTR - TBAR + 5, f"Hoja {pag + 1}")
 
-        # Dos bloques simétricos (idéntico ancho y alto)
-        GAP_B = 12                           # gap entre bloques
-        BW    = (W - ML - MR - GAP_B) / 2   # 271.5 pt
+        # Dos bloques simétricos (ancho total sin márgenes laterales)
+        GAP_B = 6                            # gap entre bloques
+        BW    = (W - GAP_B) / 2             # ocupa todo el ancho de la página
         BY    = 4                            # y inferior
         BH    = FTR - TBAR - BY - 2         # altura: 108-17-4-2 = 85
 
@@ -889,7 +935,7 @@ def generar_pdf_graficos(df: "pd.DataFrame", titulo: str = "INFORME DE OPERACION
             ("COORDINADOR", coordinador or ""),
             ("SUPERVISOR",  supervisor  or ""),
         ]):
-            bx = ML + i * (BW + GAP_B)
+            bx = i * (BW + GAP_B)
 
             # Fondo blanco + borde azul
             c.setFillColor(BLA)
