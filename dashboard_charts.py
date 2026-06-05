@@ -560,7 +560,8 @@ def generar_pdf_graficos(df: "pd.DataFrame", titulo: str = "INFORME DE OPERACION
     try:
         cnt = df["TURNO"].value_counts()
         if len(cnt) > 0:
-            fig, ax = plt.subplots(figsize=(4.5, 3.2))
+            fig, ax = plt.subplots(figsize=(3.8, 3.8))
+            ax.set_aspect("equal")
             colors = [AM if t == "DIA" else AN for t in cnt.index]
             ax.pie(cnt.values, labels=cnt.index, colors=colors,
                    autopct="%1.1f%%", pctdistance=0.72, startangle=90,
@@ -600,7 +601,8 @@ def generar_pdf_graficos(df: "pd.DataFrame", titulo: str = "INFORME DE OPERACION
                      [VE, MO, CY]) if v > 0]
         if pares:
             vals, lbls, cols = zip(*pares)
-            fig, ax = plt.subplots(figsize=(4.5, 3.2))
+            fig, ax = plt.subplots(figsize=(3.8, 3.8))
+            ax.set_aspect("equal")
             ax.pie(vals, labels=lbls, colors=cols,
                    autopct="%1.1f%%", pctdistance=0.72, startangle=90,
                    wedgeprops=dict(width=0.48))
@@ -661,7 +663,8 @@ def generar_pdf_graficos(df: "pd.DataFrame", titulo: str = "INFORME DE OPERACION
                       [VE, AM, RO]) if v > 0]
         if pares6:
             vals6, lbls6, cols6 = zip(*pares6)
-            fig, ax = plt.subplots(figsize=(4.5, 3.2))
+            fig, ax = plt.subplots(figsize=(3.8, 3.8))
+            ax.set_aspect("equal")
             ax.pie(vals6, labels=lbls6, colors=cols6,
                    autopct="%1.1f%%", pctdistance=0.72, startangle=90,
                    wedgeprops=dict(width=0.52))
@@ -739,7 +742,7 @@ def generar_pdf_graficos(df: "pd.DataFrame", titulo: str = "INFORME DE OPERACION
     except Exception:
         pass
 
-    # ── Meta datos del periodo ───────────────────────────────────────────────
+    # ── Meta datos ──────────────────────────────────────────────────────────
     fechas = pd.to_datetime(df["FECHA"], errors="coerce").dropna()
     años   = sorted(fechas.dt.year.unique().astype(int))
     meses  = sorted(fechas.dt.month.unique().astype(int))
@@ -751,9 +754,9 @@ def generar_pdf_graficos(df: "pd.DataFrame", titulo: str = "INFORME DE OPERACION
     else:
         sem_str = "—"
     if len(fechas) > 0:
-        dias      = sorted(fechas.dt.date.unique())
-        primera   = dias[0].strftime("%d/%m/%Y")
-        ultima    = dias[-1].strftime("%d/%m/%Y")
+        dias    = sorted(fechas.dt.date.unique())
+        primera = dias[0].strftime("%d/%m/%Y")
+        ultima  = dias[-1].strftime("%d/%m/%Y")
         if len(dias) == 1:
             fecha_str = primera
         elif len(dias) <= 3:
@@ -771,37 +774,38 @@ def generar_pdf_graficos(df: "pd.DataFrame", titulo: str = "INFORME DE OPERACION
     hnor_tot  = float(df["hora normal"].sum()) if "hora normal" in df.columns else 0.0
     fecha_gen = _dt2.datetime.now().strftime("%d/%m/%Y  %H:%M")
 
-    # ── Colores corporativos ─────────────────────────────────────────────────
-    AZ1 = rc.HexColor("#1F4E9B")   # azul oscuro principal
-    AZ2 = rc.HexColor("#1D4ED8")   # azul medio — periodo
-    AZ3 = rc.HexColor("#3B82F6")   # azul claro — KPIs
+    # ── Colores ──────────────────────────────────────────────────────────────
+    AZ1 = rc.HexColor("#1F4E9B")   # azul oscuro
     BLA = rc.white
-    BRD = rc.HexColor("#CBD5E1")   # borde gráfico
-    BG  = rc.HexColor("#F0F4FF")   # fondo gráfico
+    BRD = rc.HexColor("#CBD5E1")   # borde gráfico y separadores
+    BG  = rc.HexColor("#F8FAFF")   # fondo suave del marco
     TXT = rc.HexColor("#1E293B")   # texto oscuro
     GRY = rc.HexColor("#475569")   # texto secundario
 
-    # ── Dimensiones de página ────────────────────────────────────────────────
+    # ── Dimensiones ──────────────────────────────────────────────────────────
     W, H = A4                      # 595 × 842 pt
-    ML   = MR = 20                 # márgenes laterales
+    ML   = MR = 20
 
-    # Cabecera: 3 bandas de color
-    B1, B2, B3 = 42, 32, 30       # alturas: logo | periodo | KPIs
-    HDR = B1 + B2 + B3            # = 104 pt
+    # Cabecera: banda azul (B1) + 2 filas de texto sobre fondo blanco
+    B1   = 44                      # banda azul con logo y título
+    # Fila periodo: baseline en H-B1-18=780, fila KPIs: baseline en H-B1-34=764
+    # Línea azul de cierre de cabecera en H-B1-44=754
+    HDR_LINE = H - B1 - 44        # y de la línea azul de cierre = 754
 
     # Pie de página
-    FTR = 98                       # pt reservados desde abajo
+    FTR = 108                      # pt reservados desde abajo
 
-    # Área de gráficos con padding interior
-    CP    = 10                     # padding entre header/footer y gráficos
+    # Área de gráficos
+    CP   = 8
+    ca_top = HDR_LINE - CP        # 754 - 8 = 746
+    ca_bot = FTR + CP             # 108 + 8 = 116
+
     COLS, ROWS = 2, 3
-    CGAP, RGAP = 14, 14           # gap entre columnas y filas
+    CGAP, RGAP = 12, 12
+    chart_w = (W - ML - MR - CGAP) / COLS          # 271.5 pt
+    chart_h = (ca_top - ca_bot - (ROWS-1)*RGAP) / ROWS  # ≈ 194 pt
 
-    ca_top = H - HDR - CP         # = 842 - 104 - 10 = 728
-    ca_bot = FTR + CP             # = 98 + 10 = 108
-
-    chart_w = (W - ML - MR - CGAP) / COLS          # ≈ 270.5 pt
-    chart_h = (ca_top - ca_bot - (ROWS-1)*RGAP) / ROWS  # ≈ 186.7 pt
+    FPAD = 3   # marco alrededor del gráfico
 
     def _cx(col): return ML + col * (chart_w + CGAP)
     def _cy(row): return ca_bot + (ROWS - 1 - row) * (chart_h + RGAP)
@@ -811,167 +815,162 @@ def generar_pdf_graficos(df: "pd.DataFrame", titulo: str = "INFORME DE OPERACION
 
     # ── Cabecera ─────────────────────────────────────────────────────────────
     def _cabecera(pag):
-        # Banda 1 — Logo y datos generales
+        # Banda azul — logo izquierda, título centrado, emisión derecha
         y1 = H - B1
         c.setFillColor(AZ1)
         c.rect(0, y1, W, B1, fill=1, stroke=0)
         c.setFillColor(BLA)
-        c.setFont("Helvetica-Bold", 22)
+
+        # Logo "pecepe." — izquierda
+        c.setFont("Helvetica-Bold", 21)
         c.drawString(ML, y1 + 12, "pecepe.")
+
+        # Título principal — centrado y grande
+        c.setFont("Helvetica-Bold", 16)
+        c.drawCentredString(W / 2, y1 + 14, "TAREO DE OPERACIONES")
+
+        # Datos de emisión — derecha
+        c.setFont("Helvetica", 7.5)
+        c.drawRightString(W - MR, y1 + 32, f"Emitido: {fecha_gen}")
+        if pag > 0:
+            c.drawRightString(W - MR, y1 + 20, f"Hoja {pag + 1}")
+
+        # Fila 2 — Periodo (fondo blanco, texto oscuro, sin relleno de color)
+        y_per = y1 - 18            # baseline
         c.setFont("Helvetica-Bold", 8.5)
-        c.drawString(ML + 112, y1 + 23, "TAREO DE OPERACIONES")
+        c.setFillColor(TXT)
+        c.drawString(ML, y_per,
+                     f"AÑO: {año_str}   |   MES: {mes_str}   |   "
+                     f"SEMANA: {sem_str}   |   FECHA(S): {fecha_str}")
+
+        # Fila 3 — KPIs (fondo blanco, texto gris oscuro)
+        y_kpi = y1 - 34            # baseline
         c.setFont("Helvetica", 8)
-        c.drawString(ML + 112, y1 + 11, titulo)
-        hoja = f"Hoja {pag + 1}" if pag > 0 else ""
-        c.setFont("Helvetica-Bold", 7.5)
-        c.drawRightString(W - MR, y1 + 25, f"Emitido: {fecha_gen}")
-        c.setFont("Helvetica", 7)
-        c.drawRightString(W - MR, y1 + 13, f"Periodo: {primera} – {ultima}")
-        if hoja:
-            c.drawRightString(W - MR, y1 + 3, hoja)
-
-        # Banda 2 — Periodo (fondo azul medio, texto blanco grande)
-        y2 = y1 - B2
-        c.setFillColor(AZ2)
-        c.rect(0, y2, W, B2, fill=1, stroke=0)
-        c.setFillColor(BLA)
-        c.setFont("Helvetica-Bold", 9)
-        c.drawString(ML, y2 + 11,
-                     f"AÑO: {año_str}     |     MES: {mes_str}     |     "
-                     f"SEMANA: {sem_str}     |     FECHA(S): {fecha_str}")
-
-        # Banda 3 — KPIs (fondo azul claro, texto blanco)
-        y3 = y2 - B3
-        c.setFillColor(AZ3)
-        c.rect(0, y3, W, B3, fill=1, stroke=0)
-        c.setFillColor(BLA)
-        c.setFont("Helvetica-Bold", 8.5)
-        c.drawString(ML, y3 + 10,
-                     f"Registros: {total}     |     "
-                     f"Aprobados: {aprobados} / {total}  ({pct_apr})     |     "
-                     f"TTHH: {tthh_tot:,.1f} h     |     "
-                     f"Normal: {hnor_tot:,.1f} h     |     "
-                     f"25%: {h25_tot:,.1f} h     |     "
+        c.setFillColor(GRY)
+        c.drawString(ML, y_kpi,
+                     f"Registros: {total}   |   "
+                     f"Aprobados: {aprobados} / {total} ({pct_apr})   |   "
+                     f"TTHH: {tthh_tot:,.1f} h   |   "
+                     f"Normal: {hnor_tot:,.1f} h   |   "
+                     f"25%: {h25_tot:,.1f} h   |   "
                      f"35%: {h35_tot:,.1f} h")
+
+        # Línea azul de cierre de cabecera
+        c.setStrokeColor(AZ1)
+        c.setLineWidth(1.5)
+        c.line(0, HDR_LINE, W, HDR_LINE)
 
     # ── Pie de página ────────────────────────────────────────────────────────
     def _pie(pag):
-        # Línea divisoria azul
+        # Línea divisoria superior del pie
         c.setStrokeColor(AZ1)
-        c.setLineWidth(1.2)
+        c.setLineWidth(1.5)
         c.line(0, FTR, W, FTR)
 
-        # Barra de título del pie
-        TBAR = 16
+        # Barra de título (azul, ancho total)
+        TBAR = 17
         c.setFillColor(AZ1)
         c.rect(0, FTR - TBAR, W, TBAR, fill=1, stroke=0)
         c.setFillColor(BLA)
         c.setFont("Helvetica-Bold", 8.5)
-        c.drawCentredString(W / 2, FTR - TBAR + 5, "APROBACIÓN Y AUTORIZACIÓN DEL INFORME")
+        c.drawCentredString(W / 2, FTR - TBAR + 5,
+                            "APROBACIÓN Y AUTORIZACIÓN DEL INFORME")
         c.setFont("Helvetica", 7)
         c.drawString(ML, FTR - TBAR + 5, f"Emitido: {fecha_gen}")
         c.drawRightString(W - MR, FTR - TBAR + 5, f"Hoja {pag + 1}")
 
-        # Bloques de aprobación
-        BY   = 4                          # margen inferior
-        BH   = FTR - TBAR - BY - 2       # altura disponible = 98-16-4-2 = 76
-        BW   = (W - ML - MR - 12) / 2    # ancho de cada bloque ≈ 271.5
+        # Dos bloques simétricos (idéntico ancho y alto)
+        GAP_B = 12                           # gap entre bloques
+        BW    = (W - ML - MR - GAP_B) / 2   # 271.5 pt
+        BY    = 4                            # y inferior
+        BH    = FTR - TBAR - BY - 2         # altura: 108-17-4-2 = 85
 
         for i, (rol, nombre) in enumerate([
             ("COORDINADOR", coordinador or ""),
             ("SUPERVISOR",  supervisor  or ""),
         ]):
-            bx = ML + i * (BW + 12)
+            bx = ML + i * (BW + GAP_B)
 
-            # Fondo blanco del bloque
+            # Fondo blanco + borde azul
             c.setFillColor(BLA)
-            c.rect(bx, BY, BW, BH, fill=1, stroke=0)
-
-            # Borde exterior azul
             c.setStrokeColor(AZ1)
-            c.setLineWidth(0.6)
-            c.rect(bx, BY, BW, BH, fill=0, stroke=1)
+            c.setLineWidth(0.5)
+            c.rect(bx, BY, BW, BH, fill=1, stroke=1)
 
-            # Cabecera del bloque
-            MH = 15
+            # Mini cabecera del bloque
+            MH = 14
             c.setFillColor(AZ1)
             c.rect(bx, BY + BH - MH, BW, MH, fill=1, stroke=0)
-            c.setFillColor(BLA)
             c.setFont("Helvetica-Bold", 8.5)
+            c.setFillColor(BLA)
             c.drawString(bx + 8, BY + BH - MH + 4, rol)
 
-            # Nombre del aprobador
+            # Posiciones de contenido (desde el bottom-left del bloque)
+            y_nom  = BY + BH - MH - 16   # nombre del aprobador
+            y_lbl  = BY + BH - MH - 30   # label "Fecha y hora..."
+            y_val  = BY + BH - MH - 44   # valor de la fecha
+
+            # Nombre
             c.setFont("Helvetica-Bold", 9)
             c.setFillColor(TXT)
-            c.drawString(bx + 8, BY + BH - MH - 14, nombre if nombre else "—")
+            c.drawString(bx + 8, y_nom, nombre if nombre else "—")
 
-            # Etiqueta "Fecha y hora de aprobación"
+            # Etiqueta
             c.setFont("Helvetica", 7)
             c.setFillColor(GRY)
-            c.drawString(bx + 8, BY + BH - MH - 28, "Fecha y hora de aprobación:")
+            c.drawString(bx + 8, y_lbl, "Fecha y hora de aprobación:")
 
-            # Valor de fecha
+            # Valor
             c.setFont("Helvetica-Bold", 8.5)
             c.setFillColor(TXT)
-            c.drawString(bx + 8, BY + BH - MH - 40, fecha_gen)
+            c.drawString(bx + 8, y_val, fecha_gen)
 
-            # Línea separadora interior
+            # Línea de firma (en la parte baja del bloque)
             c.setStrokeColor(BRD)
-            c.setLineWidth(0.4)
-            c.line(bx + 6, BY + 20, bx + BW - 6, BY + 20)
+            c.setLineWidth(0.7)
+            c.line(bx + 8, BY + 18, bx + BW - 8, BY + 18)
 
-            # Línea de firma
-            c.setStrokeColor(BRD)
-            c.setLineWidth(0.8)
-            c.line(bx + 8, BY + 12, bx + BW - 8, BY + 12)
-
-            # Etiqueta firma y sello
+            # Etiqueta firma
             c.setFont("Helvetica", 6.5)
             c.setFillColor(GRY)
-            c.drawString(bx + 8, BY + 4, "Firma y sello")
+            c.drawString(bx + 8, BY + 8, "Firma y sello")
 
     # ── Dibujar páginas ──────────────────────────────────────────────────────
     per_page  = COLS * ROWS
     total_img = max(len(imgs), 1)
-    FPAD = 4   # padding del marco alrededor del gráfico
 
     for pag_n, inicio in enumerate(range(0, total_img, per_page)):
         _cabecera(pag_n)
         _pie(pag_n)
 
-        page_imgs  = imgs[inicio:inicio + per_page]
-        n_page     = len(page_imgs)
-        full_rows  = n_page // COLS
-        remainder  = n_page % COLS
+        page_imgs = imgs[inicio:inicio + per_page]
+        n_page    = len(page_imgs)
+        full_rows = n_page // COLS
+        remainder = n_page % COLS
 
-        # Calcular posiciones (x, y) = esquina inferior-izquierda del gráfico
         positions = []
         for r in range(full_rows):
             for col in range(COLS):
                 positions.append((_cx(col), _cy(r)))
         if remainder:
-            # Centrar gráficos sobrantes en la última fila
             row_w = remainder * chart_w + (remainder - 1) * CGAP
-            x0 = ML + (W - ML - MR - row_w) / 2
-            r  = full_rows
+            x0    = ML + (W - ML - MR - row_w) / 2
             for j in range(remainder):
-                positions.append((x0 + j * (chart_w + CGAP), _cy(r)))
+                positions.append((x0 + j * (chart_w + CGAP), _cy(full_rows)))
 
         for (x, y), (_, img_buf) in zip(positions, page_imgs):
-            # Marco: fondo claro + borde azul
+            # Marco: fondo suave + borde azul
             c.setFillColor(BG)
-            c.rect(x - FPAD, y - FPAD,
-                   chart_w + 2*FPAD, chart_h + 2*FPAD, fill=1, stroke=0)
             c.setStrokeColor(AZ1)
-            c.setLineWidth(0.6)
+            c.setLineWidth(0.5)
             c.rect(x - FPAD, y - FPAD,
-                   chart_w + 2*FPAD, chart_h + 2*FPAD, fill=0, stroke=1)
-
-            # Imagen del gráfico
+                   chart_w + 2*FPAD, chart_h + 2*FPAD, fill=1, stroke=1)
+            # Imagen (preserveAspectRatio para mantener proporciones)
             img_buf.seek(0)
             try:
                 c.drawImage(ImageReader(img_buf), x, y,
-                            width=chart_w, height=chart_h)
+                            width=chart_w, height=chart_h,
+                            preserveAspectRatio=True, anchor="c")
             except Exception:
                 pass
 

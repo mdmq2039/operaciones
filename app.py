@@ -827,15 +827,25 @@ if tab_users is not None:
 #  TAB Dashboard (coordinador y supervisor)                                    #
 # --------------------------------------------------------------------------- #
 with tab_dashboard:
-    if st.session_state.tabla is None:
-        st.info("Primero carga y procesa el tareo en la pestaña 1.")
+    # Auto-cargar desde DB si la sesión aún no tiene datos (acceso directo al dashboard)
+    _dash_src = st.session_state.tabla
+    if _dash_src is None and db.enabled():
+        try:
+            _raw = db.tareo_load()
+            if _raw is not None:
+                _dash_src = core.recalcular(_raw, cfg())
+        except Exception:
+            _dash_src = None
+
+    if _dash_src is None:
+        st.info("No hay datos disponibles. Carga el tareo en la pestaña 1.")
     else:
-        df_dash = core.recalcular(st.session_state.tabla, cfg())
+        df_dash = core.recalcular(_dash_src, cfg())
 
         # --- Filtros -------------------------------------------------------- #
         st.markdown("### 🔍 Filtros del Dashboard")
         grupos_disp_dash = sorted(df_dash["GRUPO"].unique().tolist(), key=str)
-        col_f1, col_f2 = st.columns([3, 1])
+        col_f1, col_f2, col_f3 = st.columns([3, 1, 1])
         with col_f1:
             if ES_COORD:
                 grupos_sel = st.multiselect(
@@ -848,6 +858,9 @@ with tab_dashboard:
         with col_f2:
             turno_sel = st.selectbox(
                 "Turno", ["Todos", "DIA", "NOCHE"], key="dash_turno")
+        with col_f3:
+            apro_sel = st.selectbox(
+                "Aprobado", ["Todos", "Aprobados", "Pendientes"], key="dash_apro")
 
         # --- Filtros de fecha / semana ISO / día ----------------------------- #
         df_dash_f = dash.agregar_cols_fecha(df_dash)
@@ -878,10 +891,14 @@ with tab_dashboard:
             sems_sel = st.multiselect(
                 "Semana ISO", sems_disp, default=sems_disp, key="dash_semanas")
 
-        # Máscara parcial: grupo + turno + año + mes + semana
+        # Máscara parcial: grupo + turno + aprobado + año + mes + semana
         mask_partial = df_dash_f["GRUPO"].isin(grupos_sel)
         if turno_sel != "Todos":
             mask_partial &= df_dash_f["TURNO"] == turno_sel
+        if apro_sel == "Aprobados" and "Aprobado" in df_dash_f.columns:
+            mask_partial &= df_dash_f["Aprobado"] == True
+        elif apro_sel == "Pendientes" and "Aprobado" in df_dash_f.columns:
+            mask_partial &= df_dash_f["Aprobado"] == False
         if año_sel != "Todos":
             mask_partial &= df_dash_f["_AÑO"] == int(año_sel)
         if meses_sel_nums:
