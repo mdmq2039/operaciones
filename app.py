@@ -52,16 +52,13 @@ st.markdown(
     unsafe_allow_html=True,
 )
 
-# Logo de la empresa (SVG, se ve nítido en cualquier pantalla)
-LOGO_SVG = (
-    "<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 560 96' height='{h}' overflow='visible'>"
-    "<text x='0' y='72' font-family='Segoe UI, Arial, sans-serif' "
-    "font-weight='800' font-size='84' fill='#1F4E9B'>pecepe.</text></svg>"
-)
-
-
 def mostrar_logo(altura: int = 56) -> None:
-    st.markdown(LOGO_SVG.format(h=altura), unsafe_allow_html=True)
+    st.markdown(
+        f'<div style="font-family:\'Segoe UI\',Arial,sans-serif;font-weight:800;'
+        f'font-size:{altura}px;color:#1F4E9B;line-height:1.0;'
+        f'padding-bottom:6px;letter-spacing:-1px;">pecepe.</div>',
+        unsafe_allow_html=True,
+    )
 
 
 def mostrar_pie() -> None:
@@ -678,9 +675,10 @@ if tab_aprobacion is not None:
         resumen["Estado"] = resumen.apply(
             lambda r: "✅ Completo" if r["sum"] == r["count"]
             else (f"⏳ {int(r['sum'])}/{int(r['count'])}"), axis=1)
+        resumen["Grupo"] = resumen["GRUPO"].map(core.nombre_grupo)
         st.dataframe(
-            resumen.rename(columns={"GRUPO": "Grupo", "sum": "Aprobados",
-                                    "count": "Total"})[["Grupo", "Aprobados", "Total", "Estado"]],
+            resumen.rename(columns={"sum": "Aprobados", "count": "Total"})[
+                ["Grupo", "Aprobados", "Total", "Estado"]],
             use_container_width=True, hide_index=True,
         )
 

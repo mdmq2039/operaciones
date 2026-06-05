@@ -375,6 +375,20 @@ def aplicar_masivo(df: pd.DataFrame, columna: str, valor: Any,
 
 
 # --------------------------------------------------------------------------- #
+#  Nombres de grupos (mapa código → nombre)                                    #
+# --------------------------------------------------------------------------- #
+NOMBRES_GRUPO = {
+    "1": "RECEPCION", "2": "ENVASADO", "3": "ANILLAS",
+    "4": "MASA", "5": "EMPAQUE", "N": "NOCHE",
+}
+
+
+def nombre_grupo(g) -> str:
+    """Devuelve el nombre legible del grupo; los no mapeados se devuelven igual."""
+    return NOMBRES_GRUPO.get(str(g).strip(), str(g).strip())
+
+
+# --------------------------------------------------------------------------- #
 #  Generacion del REPORTE_OPERACIONES                                          #
 # --------------------------------------------------------------------------- #
 ORDEN_OPERACIONES = [
@@ -396,9 +410,7 @@ def generar_reporte_operaciones(df: pd.DataFrame, cfg: Config,
     out["PRODUCTO"] = cfg.producto
     out["TURNO"] = df["TURNO"]
     out["ZONA"] = cfg.zona
-    # AREA: grupos numericos como entero, los de letra como texto (igual al original)
-    out["AREA"] = df["GRUPO"].map(
-        lambda g: int(g) if str(g).strip().isdigit() else g)
+    out["AREA"] = df["GRUPO"].map(nombre_grupo)
     out["SERVICE"] = df["SERVICE"]
     out["FECHA"] = df["FECHA"]
     out["INICIO"] = df["INICIO_FINAL"]
@@ -493,11 +505,13 @@ def exportar_excel(df_operaciones: pd.DataFrame) -> bytes:
     # Aplica formatos de numero y bordes a las celdas de datos
     fmt_por_col = {i + 1: _FORMATOS_OPERACIONES.get(c, "General")
                    for i, c in enumerate(cols)}
+    _col_nombres = cols.index("NOMBRES") + 1 if "NOMBRES" in cols else None
+    left_align = Alignment(horizontal="left", vertical="center")
     for r in range(2, ws.max_row + 1):
         for c in range(1, len(cols) + 1):
             cell = ws.cell(row=r, column=c)
             cell.border = border
-            cell.alignment = data_align
+            cell.alignment = left_align if c == _col_nombres else data_align
             cell.number_format = fmt_por_col[c]
             cell.font = Font(name="Calibri", size=8)
 
@@ -553,10 +567,23 @@ def exportar_tareo_trabajado(df: pd.DataFrame, cfg: Config) -> bytes:
         valores = []
         for col in cols:
             v = row[col]
-            if isinstance(v, float) and pd.isna(v):
+            if col == "HORAS_MARCACION" and v is not None:
+                try:
+                    v = hours_to_hhmm(float(v)) if not (isinstance(v, float) and pd.isna(v)) else None
+                except (TypeError, ValueError):
+                    v = None
+            elif col == "GRUPO" and v is not None:
+                v = nombre_grupo(v)
+            elif isinstance(v, float) and pd.isna(v):
                 v = None
             valores.append(v)
         ws.append(valores)
+
+    _left = Alignment(horizontal="left", vertical="center")
+    _center = Alignment(horizontal="center", vertical="center")
+    for r in range(2, ws.max_row + 1):
+        for c, col in enumerate(cols, start=1):
+            ws.cell(row=r, column=c).alignment = _left if col == "NOMBRES" else _center
 
     for c, col in enumerate(cols, start=1):
         ws.column_dimensions[get_column_letter(c)].width = 30 if col == "NOMBRES" else 12
