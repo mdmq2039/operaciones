@@ -751,180 +751,232 @@ def generar_pdf_graficos(df: "pd.DataFrame", titulo: str = "INFORME DE OPERACION
     else:
         sem_str = "—"
     if len(fechas) > 0:
-        dias = sorted(fechas.dt.date.unique())
+        dias      = sorted(fechas.dt.date.unique())
+        primera   = dias[0].strftime("%d/%m/%Y")
+        ultima    = dias[-1].strftime("%d/%m/%Y")
         if len(dias) == 1:
-            fecha_str = dias[0].strftime("%d/%m/%Y")
+            fecha_str = primera
         elif len(dias) <= 3:
-            fecha_str = "  |  ".join(d.strftime("%d/%m/%Y") for d in dias)
+            fecha_str = "  /  ".join(d.strftime("%d/%m/%Y") for d in dias)
         else:
-            fecha_str = f"{dias[0].strftime('%d/%m')} – {dias[-1].strftime('%d/%m/%Y')}"
-        primera_fecha = dias[0].strftime("%d/%m/%Y")
-        ultima_fecha  = dias[-1].strftime("%d/%m/%Y")
+            fecha_str = f"{primera} – {ultima}"
     else:
-        fecha_str = primera_fecha = ultima_fecha = "—"
-    total    = len(df)
+        fecha_str = primera = ultima = "—"
+    total     = len(df)
     aprobados = int(df["Aprobado"].sum()) if "Aprobado" in df.columns else 0
-    pct_apr  = f"{aprobados / total * 100:.0f}%" if total > 0 else "0%"
-    tthh_tot = float(df["TTHH"].sum())    if "TTHH"    in df.columns else 0.0
-    h25_tot  = float(df["hora 25"].sum()) if "hora 25" in df.columns else 0.0
-    h35_tot  = float(df["hora 35"].sum()) if "hora 35" in df.columns else 0.0
-    hnor_tot = float(df["hora normal"].sum()) if "hora normal" in df.columns else 0.0
-    now      = _dt2.datetime.now()
-    fecha_gen = now.strftime("%d/%m/%Y  %H:%M")
+    pct_apr   = f"{aprobados / total * 100:.0f}%" if total > 0 else "0%"
+    tthh_tot  = float(df["TTHH"].sum())        if "TTHH"        in df.columns else 0.0
+    h25_tot   = float(df["hora 25"].sum())     if "hora 25"     in df.columns else 0.0
+    h35_tot   = float(df["hora 35"].sum())     if "hora 35"     in df.columns else 0.0
+    hnor_tot  = float(df["hora normal"].sum()) if "hora normal" in df.columns else 0.0
+    fecha_gen = _dt2.datetime.now().strftime("%d/%m/%Y  %H:%M")
 
-    # ── Constantes de layout A4 ──────────────────────────────────────────────
-    W, H   = A4
-    ML = MR = 14
-    MB     = 8
+    # ── Colores corporativos ─────────────────────────────────────────────────
+    AZ1 = rc.HexColor("#1F4E9B")   # azul oscuro principal
+    AZ2 = rc.HexColor("#1D4ED8")   # azul medio — periodo
+    AZ3 = rc.HexColor("#3B82F6")   # azul claro — KPIs
+    BLA = rc.white
+    BRD = rc.HexColor("#CBD5E1")   # borde gráfico
+    BG  = rc.HexColor("#F0F4FF")   # fondo gráfico
+    TXT = rc.HexColor("#1E293B")   # texto oscuro
+    GRY = rc.HexColor("#475569")   # texto secundario
 
-    # Cabecera: banda logo (B1) + banda periodo (B2) + banda KPIs (B3)
-    B1, B2, B3 = 33, 21, 19     # alturas de cada banda
-    HDR = B1 + B2 + B3          # = 73 pt  (espacio reservado desde arriba)
+    # ── Dimensiones de página ────────────────────────────────────────────────
+    W, H = A4                      # 595 × 842 pt
+    ML   = MR = 20                 # márgenes laterales
+
+    # Cabecera: 3 bandas de color
+    B1, B2, B3 = 42, 32, 30       # alturas: logo | periodo | KPIs
+    HDR = B1 + B2 + B3            # = 104 pt
 
     # Pie de página
-    FTR = 62                    # pt reservados desde abajo
+    FTR = 98                       # pt reservados desde abajo
 
+    # Área de gráficos con padding interior
+    CP    = 10                     # padding entre header/footer y gráficos
     COLS, ROWS = 2, 3
-    GAP = 8
+    CGAP, RGAP = 14, 14           # gap entre columnas y filas
 
-    chart_w = (W - ML - MR - GAP) / COLS
-    chart_h = (H - HDR - FTR - (ROWS - 1) * GAP) / ROWS
+    ca_top = H - HDR - CP         # = 842 - 104 - 10 = 728
+    ca_bot = FTR + CP             # = 98 + 10 = 108
 
-    AZ1   = rc.HexColor("#1F4E9B")   # azul principal
-    AZ2   = rc.HexColor("#2563EB")   # azul medio (periodo)
-    AZ3   = rc.HexColor("#3B82F6")   # azul claro (KPIs)
-    BLA   = rc.white
-    GRI   = rc.HexColor("#F1F5F9")   # gris muy claro
+    chart_w = (W - ML - MR - CGAP) / COLS          # ≈ 270.5 pt
+    chart_h = (ca_top - ca_bot - (ROWS-1)*RGAP) / ROWS  # ≈ 186.7 pt
+
+    def _cx(col): return ML + col * (chart_w + CGAP)
+    def _cy(row): return ca_bot + (ROWS - 1 - row) * (chart_h + RGAP)
 
     buf = BytesIO()
     c   = _canvas.Canvas(buf, pagesize=A4)
 
+    # ── Cabecera ─────────────────────────────────────────────────────────────
     def _cabecera(pag):
-        # ── Banda 1: Logo ───────────────────────────────────────────────────
+        # Banda 1 — Logo y datos generales
         y1 = H - B1
         c.setFillColor(AZ1)
         c.rect(0, y1, W, B1, fill=1, stroke=0)
         c.setFillColor(BLA)
-        c.setFont("Helvetica-Bold", 20)
-        c.drawString(ML, y1 + 8, "pecepe.")
+        c.setFont("Helvetica-Bold", 22)
+        c.drawString(ML, y1 + 12, "pecepe.")
+        c.setFont("Helvetica-Bold", 8.5)
+        c.drawString(ML + 112, y1 + 23, "TAREO DE OPERACIONES")
+        c.setFont("Helvetica", 8)
+        c.drawString(ML + 112, y1 + 11, titulo)
+        hoja = f"Hoja {pag + 1}" if pag > 0 else ""
         c.setFont("Helvetica-Bold", 7.5)
-        c.drawString(ML + 100, y1 + 14, "TAREO DE OPERACIONES")
+        c.drawRightString(W - MR, y1 + 25, f"Emitido: {fecha_gen}")
         c.setFont("Helvetica", 7)
-        hoja_txt = f"  —  Hoja {pag + 1}" if pag > 0 else ""
-        c.drawRightString(W - MR, y1 + 14, f"Emitido: {fecha_gen}{hoja_txt}")
-        c.drawRightString(W - MR, y1 + 4,  f"Periodo: {primera_fecha} – {ultima_fecha}")
+        c.drawRightString(W - MR, y1 + 13, f"Periodo: {primera} – {ultima}")
+        if hoja:
+            c.drawRightString(W - MR, y1 + 3, hoja)
 
-        # ── Banda 2: Periodo ────────────────────────────────────────────────
-        y2 = H - B1 - B2
+        # Banda 2 — Periodo (fondo azul medio, texto blanco grande)
+        y2 = y1 - B2
         c.setFillColor(AZ2)
         c.rect(0, y2, W, B2, fill=1, stroke=0)
         c.setFillColor(BLA)
-        c.setFont("Helvetica-Bold", 7.5)
-        c.drawString(ML, y2 + 6,
-                     f"  Año: {año_str}     |     Mes: {mes_str}     |     "
-                     f"Semana: {sem_str}     |     Fecha(s): {fecha_str}")
+        c.setFont("Helvetica-Bold", 9)
+        c.drawString(ML, y2 + 11,
+                     f"AÑO: {año_str}     |     MES: {mes_str}     |     "
+                     f"SEMANA: {sem_str}     |     FECHA(S): {fecha_str}")
 
-        # ── Banda 3: KPIs ───────────────────────────────────────────────────
-        y3 = H - B1 - B2 - B3
+        # Banda 3 — KPIs (fondo azul claro, texto blanco)
+        y3 = y2 - B3
         c.setFillColor(AZ3)
         c.rect(0, y3, W, B3, fill=1, stroke=0)
         c.setFillColor(BLA)
-        c.setFont("Helvetica", 7.5)
-        c.drawString(ML, y3 + 5,
-                     f"  Registros: {total}     |     "
-                     f"Aprobados: {aprobados} / {total} ({pct_apr})     |     "
-                     f"TTHH Total: {tthh_tot:,.1f} h     |     "
-                     f"Hora Normal: {hnor_tot:,.1f} h     |     "
-                     f"Hora 25%: {h25_tot:,.1f} h     |     "
-                     f"Hora 35%: {h35_tot:,.1f} h")
+        c.setFont("Helvetica-Bold", 8.5)
+        c.drawString(ML, y3 + 10,
+                     f"Registros: {total}     |     "
+                     f"Aprobados: {aprobados} / {total}  ({pct_apr})     |     "
+                     f"TTHH: {tthh_tot:,.1f} h     |     "
+                     f"Normal: {hnor_tot:,.1f} h     |     "
+                     f"25%: {h25_tot:,.1f} h     |     "
+                     f"35%: {h35_tot:,.1f} h")
 
+    # ── Pie de página ────────────────────────────────────────────────────────
     def _pie(pag):
-        # ── Línea separadora ────────────────────────────────────────────────
-        yL = MB + FTR - 4
+        # Línea divisoria azul
         c.setStrokeColor(AZ1)
-        c.setLineWidth(0.8)
-        c.line(ML, yL, W - MR, yL)
+        c.setLineWidth(1.2)
+        c.line(0, FTR, W, FTR)
 
-        # Fondo suave del pie
-        c.setFillColor(GRI)
-        c.rect(ML, MB, W - ML - MR, FTR - 6, fill=1, stroke=0)
-
-        # Etiqueta emisión
-        c.setFont("Helvetica-Bold", 7)
+        # Barra de título del pie
+        TBAR = 16
         c.setFillColor(AZ1)
-        c.drawString(ML + 4, MB + FTR - 16, "FECHA Y HORA DE EMISIÓN")
+        c.rect(0, FTR - TBAR, W, TBAR, fill=1, stroke=0)
+        c.setFillColor(BLA)
+        c.setFont("Helvetica-Bold", 8.5)
+        c.drawCentredString(W / 2, FTR - TBAR + 5, "APROBACIÓN Y AUTORIZACIÓN DEL INFORME")
         c.setFont("Helvetica", 7)
-        c.setFillColor(rc.HexColor("#374151"))
-        c.drawString(ML + 4, MB + FTR - 26, fecha_gen)
+        c.drawString(ML, FTR - TBAR + 5, f"Emitido: {fecha_gen}")
+        c.drawRightString(W - MR, FTR - TBAR + 5, f"Hoja {pag + 1}")
 
-        # Título central
-        c.setFont("Helvetica-Bold", 6.5)
-        c.setFillColor(AZ1)
-        c.drawCentredString(W / 2, MB + FTR - 16, titulo)
-        c.setFont("Helvetica", 6)
-        c.setFillColor(rc.HexColor("#374151"))
-        c.drawCentredString(W / 2, MB + FTR - 26,
-                            f"Registros del {primera_fecha} al {ultima_fecha}")
+        # Bloques de aprobación
+        BY   = 4                          # margen inferior
+        BH   = FTR - TBAR - BY - 2       # altura disponible = 98-16-4-2 = 76
+        BW   = (W - ML - MR - 12) / 2    # ancho de cada bloque ≈ 271.5
 
-        # Hoja
-        c.setFont("Helvetica", 6.5)
-        c.setFillColor(rc.HexColor("#6B7280"))
-        c.drawRightString(W - MR - 4, MB + FTR - 16,
-                          f"Hoja {pag + 1}")
+        for i, (rol, nombre) in enumerate([
+            ("COORDINADOR", coordinador or ""),
+            ("SUPERVISOR",  supervisor  or ""),
+        ]):
+            bx = ML + i * (BW + 12)
 
-        # Bloque firmas ──────────────────────────────────────────────────────
-        mid  = W / 2
-        fw   = (mid - ML - 10) / 1          # ancho de cada bloque
-        bx_l = ML + 4                        # x bloque izquierdo
-        bx_r = mid + 6                       # x bloque derecho
-        by   = MB + 4
-        bh   = FTR - 36                      # alto del bloque firma
-
-        for bx, rol_lbl, nombre in [
-            (bx_l, "COORDINADOR", coordinador or ""),
-            (bx_r, "SUPERVISOR",  supervisor  or ""),
-        ]:
-            # Borde del bloque
-            c.setStrokeColor(rc.HexColor("#CBD5E1"))
-            c.setLineWidth(0.4)
-            c.rect(bx, by, mid - ML - 10, bh, fill=0, stroke=1)
-            # Cabecera del bloque
-            c.setFillColor(AZ1)
-            c.rect(bx, by + bh - 12, mid - ML - 10, 12, fill=1, stroke=0)
-            c.setFont("Helvetica-Bold", 7)
+            # Fondo blanco del bloque
             c.setFillColor(BLA)
-            c.drawString(bx + 4, by + bh - 9, rol_lbl)
-            # Nombre
-            c.setFont("Helvetica", 7)
-            c.setFillColor(rc.HexColor("#1E293B"))
-            c.drawString(bx + 4, by + bh - 23, nombre or "—")
-            # Línea de firma
-            c.setStrokeColor(rc.HexColor("#94A3B8"))
-            c.setLineWidth(0.5)
-            c.line(bx + 4, by + 8, bx + mid - ML - 18, by + 8)
-            # "Firma"
-            c.setFont("Helvetica", 5.5)
-            c.setFillColor(rc.HexColor("#9CA3AF"))
-            c.drawString(bx + 4, by + 1, "Firma y sello")
+            c.rect(bx, BY, BW, BH, fill=1, stroke=0)
 
-    per_page = COLS * ROWS
-    total_imgs = max(len(imgs), 1)
-    for pag_n, inicio in enumerate(range(0, total_imgs, per_page)):
+            # Borde exterior azul
+            c.setStrokeColor(AZ1)
+            c.setLineWidth(0.6)
+            c.rect(bx, BY, BW, BH, fill=0, stroke=1)
+
+            # Cabecera del bloque
+            MH = 15
+            c.setFillColor(AZ1)
+            c.rect(bx, BY + BH - MH, BW, MH, fill=1, stroke=0)
+            c.setFillColor(BLA)
+            c.setFont("Helvetica-Bold", 8.5)
+            c.drawString(bx + 8, BY + BH - MH + 4, rol)
+
+            # Nombre del aprobador
+            c.setFont("Helvetica-Bold", 9)
+            c.setFillColor(TXT)
+            c.drawString(bx + 8, BY + BH - MH - 14, nombre if nombre else "—")
+
+            # Etiqueta "Fecha y hora de aprobación"
+            c.setFont("Helvetica", 7)
+            c.setFillColor(GRY)
+            c.drawString(bx + 8, BY + BH - MH - 28, "Fecha y hora de aprobación:")
+
+            # Valor de fecha
+            c.setFont("Helvetica-Bold", 8.5)
+            c.setFillColor(TXT)
+            c.drawString(bx + 8, BY + BH - MH - 40, fecha_gen)
+
+            # Línea separadora interior
+            c.setStrokeColor(BRD)
+            c.setLineWidth(0.4)
+            c.line(bx + 6, BY + 20, bx + BW - 6, BY + 20)
+
+            # Línea de firma
+            c.setStrokeColor(BRD)
+            c.setLineWidth(0.8)
+            c.line(bx + 8, BY + 12, bx + BW - 8, BY + 12)
+
+            # Etiqueta firma y sello
+            c.setFont("Helvetica", 6.5)
+            c.setFillColor(GRY)
+            c.drawString(bx + 8, BY + 4, "Firma y sello")
+
+    # ── Dibujar páginas ──────────────────────────────────────────────────────
+    per_page  = COLS * ROWS
+    total_img = max(len(imgs), 1)
+    FPAD = 4   # padding del marco alrededor del gráfico
+
+    for pag_n, inicio in enumerate(range(0, total_img, per_page)):
         _cabecera(pag_n)
         _pie(pag_n)
-        for i, (_, img_buf) in enumerate(imgs[inicio:inicio + per_page]):
-            col = i % COLS
-            row = i // COLS
-            x = ML + col * (chart_w + GAP)
-            y = MB + FTR + (ROWS - 1 - row) * (chart_h + GAP)
+
+        page_imgs  = imgs[inicio:inicio + per_page]
+        n_page     = len(page_imgs)
+        full_rows  = n_page // COLS
+        remainder  = n_page % COLS
+
+        # Calcular posiciones (x, y) = esquina inferior-izquierda del gráfico
+        positions = []
+        for r in range(full_rows):
+            for col in range(COLS):
+                positions.append((_cx(col), _cy(r)))
+        if remainder:
+            # Centrar gráficos sobrantes en la última fila
+            row_w = remainder * chart_w + (remainder - 1) * CGAP
+            x0 = ML + (W - ML - MR - row_w) / 2
+            r  = full_rows
+            for j in range(remainder):
+                positions.append((x0 + j * (chart_w + CGAP), _cy(r)))
+
+        for (x, y), (_, img_buf) in zip(positions, page_imgs):
+            # Marco: fondo claro + borde azul
+            c.setFillColor(BG)
+            c.rect(x - FPAD, y - FPAD,
+                   chart_w + 2*FPAD, chart_h + 2*FPAD, fill=1, stroke=0)
+            c.setStrokeColor(AZ1)
+            c.setLineWidth(0.6)
+            c.rect(x - FPAD, y - FPAD,
+                   chart_w + 2*FPAD, chart_h + 2*FPAD, fill=0, stroke=1)
+
+            # Imagen del gráfico
             img_buf.seek(0)
             try:
                 c.drawImage(ImageReader(img_buf), x, y,
-                            width=chart_w, height=chart_h,
-                            preserveAspectRatio=True, anchor="sw")
+                            width=chart_w, height=chart_h)
             except Exception:
                 pass
+
         c.showPage()
 
     c.save()
     return buf.getvalue()
+
