@@ -112,6 +112,19 @@ def init_schema() -> None:
         )""",
         # Migración para tablas creadas antes de añadir 'aumento_extra'
         "ALTER TABLE tareo ADD COLUMN IF NOT EXISTS aumento_extra DOUBLE PRECISION DEFAULT 0",
+        """
+        CREATE TABLE IF NOT EXISTS auditoria (
+            id              SERIAL PRIMARY KEY,
+            usuario         TEXT NOT NULL,
+            accion          TEXT NOT NULL,
+            fecha_hora      TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+            fecha_hora_salida TIMESTAMPTZ,
+            duracion_min    DOUBLE PRECISION,
+            ip              TEXT,
+            dispositivo     TEXT,
+            user_agent      TEXT,
+            session_key     TEXT
+        )""",
     ]
     eng = get_engine()
     with eng.begin() as cx:
@@ -242,6 +255,45 @@ def tareo_load() -> Optional[pd.DataFrame]:
     df["GRUPO"] = df["GRUPO"].astype(str)
     df = df.set_index("id", drop=False)
     df.index.name = None
+    return df
+
+
+# --------------------------------------------------------------------------- #
+#  Auditoría                                                                   #
+# --------------------------------------------------------------------------- #
+def registrar_login(usuario: str, ip: str, dispositivo: str,
+                    user_agent: str, session_key: str) -> int:
+    """Registra un evento de login y devuelve el id del registro."""
+    eng = get_engine()
+    with eng.begin() as cx:
+        row = cx.execute(text(
+            "INSERT INTO auditoria (usuario, accion, ip, dispositivo, user_agent, session_key) "
+            "VALUES (:u, 'login', :ip, :dev, :ua, :sk) RETURNING id"
+        ), {"u": usuario, "ip": ip, "dev": dispositivo, "ua": user_agent, "sk": session_key})
+        return row.scalar()
+
+
+def registrar_logout(audit_id: int) -> None:
+    """Actualiza el registro con fecha_hora_salida y duración en minutos."""
+    eng = get_engine()
+    with eng.begin() as cx:
+        cx.execute(text(
+            "UPDATE auditoria SET accion='logout', fecha_hora_salida = NOW(), "
+            "duracion_min = EXTRACT(EPOCH FROM (NOW() - fecha_hora)) / 60.0 "
+            "WHERE id = :id"
+        ), {"id": audit_id})
+
+
+def auditoria_load() -> pd.DataFrame:
+    """Carga el historial de auditoría ordenado por fecha desc."""
+    eng = get_engine()
+    with eng.connect() as cx:
+        df = pd.read_sql(text(
+            "SELECT id, usuario, fecha_hora AT TIME ZONE 'America/Lima' AS entrada, "
+            "fecha_hora_salida AT TIME ZONE 'America/Lima' AS salida, "
+            "duracion_min, ip, dispositivo, user_agent "
+            "FROM auditoria ORDER BY id DESC LIMIT 500"
+        ), cx)
     return df
 
 

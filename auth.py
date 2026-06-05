@@ -46,6 +46,7 @@ def usuarios_por_defecto() -> dict:
     users = {
         "donet":  _nuevo_registro("donet2026",  "coordinador",  None),
         "prueba": _nuevo_registro("prueba2026", "visualizador", None),
+        "2026":   _nuevo_registro("2026donet",  "auditor",      None),
     }
     for g in GRUPOS_POR_DEFECTO:
         users[f"sup_{g}".lower()] = _nuevo_registro(f"{g}123", "supervisor", g)

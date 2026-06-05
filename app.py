@@ -156,6 +156,28 @@ if st.session_state.user is None:
         datos = auth.verificar(u, p)
         if datos:
             st.session_state.user = datos
+            # Registro de auditoría al iniciar sesión
+            if db.enabled():
+                try:
+                    _hdrs = st.context.headers
+                    _ip   = (_hdrs.get("x-forwarded-for") or
+                             _hdrs.get("x-real-ip") or "desconocida").split(",")[0].strip()
+                    _ua   = _hdrs.get("user-agent") or ""
+                    _ua_lo = _ua.lower()
+                    if any(k in _ua_lo for k in ("iphone", "android", "mobile")):
+                        _dev = "Celular"
+                    elif any(k in _ua_lo for k in ("ipad", "tablet")):
+                        _dev = "Tablet"
+                    else:
+                        _dev = "PC"
+                    import uuid
+                    _sk = str(uuid.uuid4())
+                    _aid = db.registrar_login(
+                        datos["usuario"], _ip, _dev, _ua[:500], _sk)
+                    st.session_state["_audit_id"] = _aid
+                    st.session_state["_audit_sk"] = _sk
+                except Exception:
+                    pass
             st.rerun()
         else:
             st.error("Usuario o contraseña incorrectos.")
@@ -168,12 +190,14 @@ if st.session_state.user is None:
 
 # Usuario autenticado
 USER = st.session_state.user
-ES_COORD = USER["rol"] == "coordinador"
-ES_VISOR = USER["rol"] == "visualizador"
+ES_COORD   = USER["rol"] == "coordinador"
+ES_VISOR   = USER["rol"] == "visualizador"
+ES_AUDITOR = USER["rol"] == "auditor"
 GRUPO_USER = USER.get("grupo")
 
 # Carga el tareo compartido en cada recarga (refleja el trabajo de otros)
-st.session_state.tabla = cargar_estado_app()
+if not ES_AUDITOR:
+    st.session_state.tabla = cargar_estado_app()
 
 
 # --------------------------------------------------------------------------- #
@@ -184,14 +208,25 @@ with st.sidebar:
         rol_txt = "Coordinador"
     elif ES_VISOR:
         rol_txt = "Visualizador"
+    elif ES_AUDITOR:
+        rol_txt = "Auditor"
     else:
         rol_txt = f"Supervisor · Grupo {GRUPO_USER}"
     st.markdown(f"👤 **{USER['usuario']}**  \n_{rol_txt}_")
     if st.button("🚪 Salir", type="primary", use_container_width=True):
+        if db.enabled():
+            try:
+                _aid_out = st.session_state.get("_audit_id")
+                if _aid_out:
+                    db.registrar_logout(_aid_out)
+            except Exception:
+                pass
         st.session_state.clear()
         st.rerun()
     st.divider()
 
+    if ES_AUDITOR:
+        st.caption("Módulo de auditoría y control de accesos.")
     c = cfg()
     if ES_COORD:
         st.markdown("### ⚙️ Configuración de reglas")
@@ -259,22 +294,28 @@ st.markdown(
 )
 st.write("")
 
-if ES_COORD:
+if ES_AUDITOR:
+    tab_auditoria, = st.tabs(["🔍 Auditoría"])
+    (tab_cargar, tab_condiciones, tab_aprobacion, tab_reporte,
+     tab_dashboard, tab_compartir, tab_users) = (
+        None, None, None, None, None, None, None)
+elif ES_COORD:
     (tab_cargar, tab_condiciones, tab_aprobacion, tab_reporte,
      tab_dashboard, tab_compartir, tab_users) = st.tabs(
         ["📥 1. Cargar", "🧮 2. Condiciones / TTHH", "✅ 3. Aprobación",
          "📤 4. Reporte final", "📊 Dashboard", "📱 Compartir", "👥 Usuarios"]
     )
+    tab_auditoria = None
 elif ES_VISOR:
     tab_cargar, tab_reporte, tab_dashboard, tab_compartir = st.tabs(
         ["📥 Cargar", "📤 Reporte final", "📊 Dashboard", "📱 Compartir"]
     )
-    tab_condiciones = tab_aprobacion = tab_users = None
+    tab_condiciones = tab_aprobacion = tab_users = tab_auditoria = None
 else:
     tab_condiciones, tab_aprobacion, tab_dashboard, tab_compartir = st.tabs(
         ["🧮 Condiciones / TTHH", "✅ Aprobación", "📊 Dashboard", "📱 Compartir"]
     )
-    tab_cargar = tab_reporte = tab_users = None
+    tab_cargar = tab_reporte = tab_users = tab_auditoria = None
 
 # --------------------------------------------------------------------------- #
 #  TAB 1: Cargar (sólo coordinador)                                            #
@@ -1254,6 +1295,60 @@ with tab_compartir:
                     "3. Mantén presionado el PDF → toca **Compartir**\n"
                     "4. Elige **WhatsApp** → selecciona contacto o grupo → envía"
                 )
+
+
+# --------------------------------------------------------------------------- #
+#  TAB AUDITORÍA (sólo rol "auditor")                                          #
+# --------------------------------------------------------------------------- #
+if tab_auditoria is not None:
+    with tab_auditoria:
+        st.subheader("🔍 Registro de accesos — Auditoría")
+        if not db.enabled():
+            st.warning("La auditoría requiere base de datos (DATABASE_URL no configurada).")
+        else:
+            try:
+                df_aud = db.auditoria_load()
+                if df_aud.empty:
+                    st.info("No hay registros de acceso todavía.")
+                else:
+                    # Renombrar columnas para mostrar
+                    df_aud = df_aud.rename(columns={
+                        "usuario":     "Usuario",
+                        "entrada":     "Fecha/Hora Entrada",
+                        "salida":      "Fecha/Hora Salida",
+                        "duracion_min": "Duración (min)",
+                        "ip":          "IP",
+                        "dispositivo": "Dispositivo",
+                        "user_agent":  "User-Agent",
+                    })
+                    # Formatear duración
+                    if "Duración (min)" in df_aud.columns:
+                        df_aud["Duración (min)"] = df_aud["Duración (min)"].apply(
+                            lambda x: f"{x:.1f}" if pd.notna(x) else "Activo")
+                    # Métricas rápidas
+                    total = len(df_aud)
+                    activos = (df_aud["Duración (min)"] == "Activo").sum()
+                    m1, m2, m3 = st.columns(3)
+                    m1.metric("Total sesiones", total)
+                    m2.metric("Sesiones activas", activos)
+                    m3.metric("Usuarios únicos",
+                              df_aud["Usuario"].nunique())
+
+                    # Tabla principal (sin user_agent para ahorrar espacio)
+                    cols_mostrar = ["Usuario", "Fecha/Hora Entrada", "Fecha/Hora Salida",
+                                    "Duración (min)", "IP", "Dispositivo"]
+                    st.dataframe(df_aud[cols_mostrar],
+                                 use_container_width=True, hide_index=True)
+
+                    # Detalle con user-agent en expander
+                    with st.expander("Ver detalle completo (User-Agent)"):
+                        st.dataframe(df_aud, use_container_width=True, hide_index=True)
+
+                    # Botón para recargar
+                    if st.button("🔄 Actualizar"):
+                        st.rerun()
+            except Exception as _e:
+                st.error(f"Error cargando auditoría: {_e}")
 
 
 # --------------------------------------------------------------------------- #
