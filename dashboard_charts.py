@@ -833,7 +833,7 @@ def generar_pdf_graficos(df: "pd.DataFrame", titulo: str = "INFORME DE OPERACION
     HDR_LINE = H - B1 - 44        # y de la línea azul de cierre = 754
 
     # Pie de página
-    FTR = 108                      # pt reservados desde abajo
+    FTR = 60                       # pt reservados desde abajo (compactado)
 
     # Área de gráficos
     CP   = 8
@@ -868,12 +868,6 @@ def generar_pdf_graficos(df: "pd.DataFrame", titulo: str = "INFORME DE OPERACION
         # Título principal — centrado y grande
         c.setFont("Helvetica-Bold", 16)
         c.drawCentredString(W / 2, y1 + 14, "TAREO DE OPERACIONES")
-
-        # Datos de emisión — derecha
-        c.setFont("Helvetica", 7.5)
-        c.drawRightString(W - MR, y1 + 32, f"Emitido: {fecha_gen}")
-        if pag > 0:
-            c.drawRightString(W - MR, y1 + 20, f"Hoja {pag + 1}")
 
         # Helper: distribuye N ítems simétricamente en la línea
         def _fila_sym(y, items, font="Helvetica-Bold", size=8.5, color=TXT):
@@ -913,23 +907,18 @@ def generar_pdf_graficos(df: "pd.DataFrame", titulo: str = "INFORME DE OPERACION
         c.setLineWidth(1.5)
         c.line(0, FTR, W, FTR)
 
-        # Barra de título (azul, ancho total)
-        TBAR = 17
-        c.setFillColor(AZ1)
-        c.rect(0, FTR - TBAR, W, TBAR, fill=1, stroke=0)
-        c.setFillColor(BLA)
+        # Título sin fondo coloreado
+        TBAR = 14
         c.setFont("Helvetica-Bold", 8.5)
-        c.drawCentredString(W / 2, FTR - TBAR + 5,
+        c.setFillColor(AZ1)
+        c.drawCentredString(W / 2, FTR - TBAR + 4,
                             "APROBACIÓN Y AUTORIZACIÓN DEL INFORME")
-        c.setFont("Helvetica", 7)
-        c.drawString(ML, FTR - TBAR + 5, f"Emitido: {fecha_gen}")
-        c.drawRightString(W - MR, FTR - TBAR + 5, f"Hoja {pag + 1}")
 
-        # Dos bloques simétricos (ancho total sin márgenes laterales)
-        GAP_B = 6                            # gap entre bloques
-        BW    = (W - GAP_B) / 2             # ocupa todo el ancho de la página
-        BY    = 4                            # y inferior
-        BH    = FTR - TBAR - BY - 2         # altura: 108-17-4-2 = 85
+        # Dos bloques simétricos compactos (solo rol + nombre)
+        GAP_B = 6
+        BW    = (W - GAP_B) / 2
+        BY    = 2
+        BH    = FTR - TBAR - BY - 2
 
         for i, (rol, nombre) in enumerate([
             ("COORDINADOR", coordinador or ""),
@@ -937,47 +926,21 @@ def generar_pdf_graficos(df: "pd.DataFrame", titulo: str = "INFORME DE OPERACION
         ]):
             bx = i * (BW + GAP_B)
 
-            # Fondo blanco + borde azul
+            # Borde azul, fondo blanco
             c.setFillColor(BLA)
             c.setStrokeColor(AZ1)
             c.setLineWidth(0.5)
             c.rect(bx, BY, BW, BH, fill=1, stroke=1)
 
-            # Mini cabecera del bloque (sin fondo, texto azul oscuro)
-            MH = 14
+            # Rol
             c.setFont("Helvetica-Bold", 8.5)
             c.setFillColor(AZ1)
-            c.drawString(bx + 8, BY + BH - MH + 4, rol)
-
-            # Posiciones de contenido (desde el bottom-left del bloque)
-            y_nom  = BY + BH - MH - 16   # nombre del aprobador
-            y_lbl  = BY + BH - MH - 30   # label "Fecha y hora..."
-            y_val  = BY + BH - MH - 44   # valor de la fecha
+            c.drawString(bx + 8, BY + BH - 14, rol)
 
             # Nombre
             c.setFont("Helvetica-Bold", 9)
             c.setFillColor(TXT)
-            c.drawString(bx + 8, y_nom, nombre if nombre else "—")
-
-            # Etiqueta
-            c.setFont("Helvetica", 7)
-            c.setFillColor(GRY)
-            c.drawString(bx + 8, y_lbl, "Fecha y hora de aprobación:")
-
-            # Valor
-            c.setFont("Helvetica-Bold", 8.5)
-            c.setFillColor(TXT)
-            c.drawString(bx + 8, y_val, fecha_gen)
-
-            # Línea de firma (en la parte baja del bloque)
-            c.setStrokeColor(BRD)
-            c.setLineWidth(0.7)
-            c.line(bx + 8, BY + 18, bx + BW - 8, BY + 18)
-
-            # Etiqueta firma
-            c.setFont("Helvetica", 6.5)
-            c.setFillColor(GRY)
-            c.drawString(bx + 8, BY + 8, "Firma y sello")
+            c.drawString(bx + 8, BY + BH - 28, nombre if nombre else "—")
 
     # ── Dibujar páginas ──────────────────────────────────────────────────────
     per_page  = COLS * ROWS
