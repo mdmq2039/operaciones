@@ -246,18 +246,19 @@ def tareo_load() -> Optional[pd.DataFrame]:
 
 
 def tareo_save_subset(df_subset: pd.DataFrame) -> None:
-    """Actualiza SOLO las columnas editables de las filas (por id) del grupo.
-
-    Evita pisar el trabajo de otros supervisores que editan otros grupos.
+    """Actualiza las columnas editables de las filas (por id) del grupo.
+    Si un registro tenía fecha NULL en DB y ahora tiene fecha, la actualiza.
     """
     if df_subset is None or len(df_subset) == 0:
         return
     eng = get_engine()
     sets = ", ".join(f"{c} = :{c}" for c in COLS_EDITABLES)
     params = []
+    params_fecha = []
     for idx, r in df_subset.iterrows():
+        row_id = int(r["id"]) if "id" in r else int(idx)
         params.append({
-            "id": int(r["id"]) if "id" in r else int(idx),
+            "id": row_id,
             "corrido": bool(r.get("Corrido")),
             "teorico12": bool(r.get("Teorico12")),
             "refrigerio": bool(r.get("Refrigerio")),
@@ -266,5 +267,20 @@ def tareo_save_subset(df_subset: pd.DataFrame) -> None:
             "jornada_noche": r.get("JornadaNoche"),
             "aprobado": bool(r.get("Aprobado")),
         })
+        fecha = r.get("FECHA")
+        if fecha is not None:
+            try:
+                if not pd.isna(fecha):
+                    f = fecha
+                    if hasattr(f, "date"):
+                        f = f.date() if hasattr(f, "hour") else f
+                    params_fecha.append({"id": row_id, "fecha": f})
+            except (TypeError, ValueError):
+                pass
     with eng.begin() as cx:
         cx.execute(text(f"UPDATE tareo SET {sets} WHERE id = :id"), params)
+        if params_fecha:
+            cx.execute(
+                text("UPDATE tareo SET fecha = :fecha WHERE id = :id AND fecha IS NULL"),
+                params_fecha,
+            )

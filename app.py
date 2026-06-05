@@ -41,6 +41,7 @@ st.markdown(
     <style>
     .block-container {padding-top: 1.5rem;}
     .titulo-app {font-size: clamp(1.0rem, 4.5vw, 1.9rem); font-weight: 800; color: #1f3864; line-height: 1.2;}
+    [data-testid="stMarkdownContainer"] svg { overflow: visible !important; }
     .sub {color:#5b6770;}
     .metric-card {background:#f1f5fb;border-radius:10px;padding:10px 14px;}
     div[data-testid="stDataFrame"] {border:1px solid #d9e1ec;border-radius:8px;}
@@ -625,11 +626,12 @@ if tab_aprobacion is not None:
 
         # Filtro adicional por días del periodo activo (Tab 1)
         _per_fechas = st.session_state.get("_per_fechas", [])
+        _per_str = ""
         if _per_fechas:
-            _mask_fecha = (
-                pd.to_datetime(st.session_state.tabla["FECHA"], errors="coerce")
-                .dt.date.isin(_per_fechas)
-            )
+            _fecha_col = pd.to_datetime(
+                st.session_state.tabla["FECHA"], errors="coerce").dt.date
+            # Incluir registros con fecha coincidente O sin fecha (pertenecen al periodo actual)
+            _mask_fecha = _fecha_col.isin(_per_fechas) | _fecha_col.isna()
             mask_g = mask_g & _mask_fecha
             _per_str = " · ".join(
                 f"{dash.DIAS_ES[f.weekday()][:3]} {f.strftime('%d/%m/%Y')}"
@@ -642,13 +644,20 @@ if tab_aprobacion is not None:
         a1, a2, a3 = st.columns(3)
         with a1:
             if st.button("✅ Aprobar grupo", type="primary"):
+                # Asignar fecha del periodo a registros sin fecha antes de guardar
+                if _per_fechas:
+                    _fill_f = pd.Timestamp(_per_fechas[0])
+                    _null_m = mask_g & pd.to_datetime(
+                        st.session_state.tabla["FECHA"], errors="coerce").isna()
+                    if _null_m.any():
+                        st.session_state.tabla.loc[_null_m, "FECHA"] = _fill_f
                 _n = int(mask_g.sum())
                 st.session_state.tabla = core.aplicar_masivo(
                     st.session_state.tabla, "Aprobado", True, mask=mask_g)
                 persistir_subset(mask_g)
                 st.success(
                     f"✅ **{_n} registros aprobados** y guardados en la base de datos."
-                    + (f"  \nPeriodo: {_per_str}" if _per_fechas else "")
+                    + (f"  \nPeriodo: {_per_str}" if _per_str else "")
                 )
         with a2:
             if st.button("❌ Desaprobar grupo"):
