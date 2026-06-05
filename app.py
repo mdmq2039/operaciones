@@ -53,7 +53,7 @@ st.markdown(
 
 # Logo de la empresa (SVG, se ve nítido en cualquier pantalla)
 LOGO_SVG = (
-    "<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 480 96' height='{h}'>"
+    "<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 560 96' height='{h}' overflow='visible'>"
     "<text x='0' y='72' font-family='Segoe UI, Arial, sans-serif' "
     "font-weight='800' font-size='84' fill='#1F4E9B'>pecepe.</text></svg>"
 )
@@ -324,44 +324,37 @@ if tab_cargar is not None:
                     "Semana ISO", _sem_lbls, index=_sem_def, key="per_semana")
             _sem_sel = _semanas[_sem_lbls.index(_sem_sel_lbl)]
 
-            st.markdown(
-                '<p style="margin:12px 0 4px 0;font-size:0.82rem;'
-                'color:#374151;font-weight:600;">'
-                'Días de la semana — marca los que vas a trabajar:</p>',
-                unsafe_allow_html=True,
+            # Selector de días como multiselect (funciona bien en celular)
+            _dia_opts = [
+                f'{_dia["nombre"]} {_dia["fecha"].strftime("%d/%m/%Y")}'
+                for _dia in _sem_sel["dias"]
+            ]
+            _dia_fecha_map = {
+                f'{_dia["nombre"]} {_dia["fecha"].strftime("%d/%m/%Y")}': _dia["fecha"]
+                for _dia in _sem_sel["dias"]
+            }
+            _default_dias = [
+                f'{_dia["nombre"]} {_dia["fecha"].strftime("%d/%m/%Y")}'
+                for _dia in _sem_sel["dias"] if _dia["en_mes"]
+            ]
+            _dias_sel = st.multiselect(
+                "Días de la semana a trabajar:",
+                _dia_opts,
+                default=_default_dias,
+                key="per_dias",
+                help="Selecciona uno o varios días. Solo los datos de esas fechas "
+                     "se mostrarán y se usarán al aprobar.",
             )
-            _cols_d = st.columns(7)
-            _fechas_periodo = []
-            for _col_d, _dia in zip(_cols_d, _sem_sel["dias"]):
-                _en = _dia["en_mes"]
-                _bg = "#DBEAFE" if _en else "#F3F4F6"
-                _fc = "#1D4ED8" if _en else "#9CA3AF"
-                _brd = "#93C5FD" if _en else "#E5E7EB"
-                _col_d.markdown(
-                    f'<div style="background:{_bg};border-radius:8px 8px 0 0;'
-                    f'padding:8px 4px 2px 4px;text-align:center;'
-                    f'border:1px solid {_brd};border-bottom:none;">'
-                    f'<b style="font-size:0.68rem;color:{_fc}">'
-                    f'{_dia["nombre"][:3].upper()}</b>'
-                    f'<br><b style="font-size:0.85rem;color:#111827;">'
-                    f'{_dia["fecha"].strftime("%d/%m")}</b></div>',
-                    unsafe_allow_html=True,
-                )
-                if _col_d.checkbox(
-                    "✓", value=_en,
-                    key=f"dia_{_dia['fecha'].isoformat()}",
-                    label_visibility="collapsed",
-                ):
-                    _fechas_periodo.append(_dia["fecha"])
+            _fechas_periodo = [_dia_fecha_map[d] for d in _dias_sel]
 
-            # Guardar en session state para que el Dashboard lo use
+            # Guardar en session state para Dashboard y Aprobación
             st.session_state["_per_fechas"] = _fechas_periodo
             if _fechas_periodo:
-                _resumen_dias = " · ".join(
+                _resumen = " · ".join(
                     f"{dash.DIAS_ES[f.weekday()][:3]} {f.strftime('%d/%m')}"
                     for f in _fechas_periodo
                 )
-                st.caption(f"Periodo activo: {len(_fechas_periodo)} día(s) — {_resumen_dias}")
+                st.success(f"Periodo activo: {len(_fechas_periodo)} día(s) — {_resumen}")
 
         st.write("")
         archivo = st.file_uploader(
@@ -615,17 +608,40 @@ if tab_aprobacion is not None:
         else:
             mask_g = st.session_state.tabla["GRUPO"].astype(str) == gsel
 
+        # Filtro adicional por días del periodo activo (Tab 1)
+        _per_fechas = st.session_state.get("_per_fechas", [])
+        if _per_fechas:
+            _mask_fecha = (
+                pd.to_datetime(st.session_state.tabla["FECHA"], errors="coerce")
+                .dt.date.isin(_per_fechas)
+            )
+            mask_g = mask_g & _mask_fecha
+            _per_str = " · ".join(
+                f"{dash.DIAS_ES[f.weekday()][:3]} {f.strftime('%d/%m/%Y')}"
+                for f in _per_fechas
+            )
+            st.info(f"📅 Periodo activo: **{_per_str}**  \n"
+                    "Solo se aprobarán los registros de esas fechas. "
+                    "Para cambiar el periodo ve a la pestaña 📥 Cargar.")
+
         a1, a2, a3 = st.columns(3)
         with a1:
             if st.button("✅ Aprobar grupo", type="primary"):
+                _n = int(mask_g.sum())
                 st.session_state.tabla = core.aplicar_masivo(
                     st.session_state.tabla, "Aprobado", True, mask=mask_g)
                 persistir_subset(mask_g)
+                st.success(
+                    f"✅ **{_n} registros aprobados** y guardados en la base de datos."
+                    + (f"  \nPeriodo: {_per_str}" if _per_fechas else "")
+                )
         with a2:
             if st.button("❌ Desaprobar grupo"):
+                _n = int(mask_g.sum())
                 st.session_state.tabla = core.aplicar_masivo(
                     st.session_state.tabla, "Aprobado", False, mask=mask_g)
                 persistir_subset(mask_g)
+                st.warning(f"❌ {_n} registros desaprobados.")
         with a3:
             sub_t = st.session_state.tabla[mask_g]
             st.metric(f"Aprobados ({gsel})",
