@@ -1036,12 +1036,25 @@ with tab_dashboard:
                 st.dataframe(
                     resumen_sem.style.format({
                         "TTHH": "{:.2f}",
+
                         "Hora Normal": "{:.2f}",
                         "Hora 25%": "{:.2f}",
                         "Hora 35%": "{:.2f}",
                     }),
                     use_container_width=True, hide_index=True,
                 )
+
+            # --- Descarga PDF de gráficos ----------------------------------- #
+            st.divider()
+            st.markdown("### 📄 Descargar gráficos en PDF")
+            _pdf_graf = dash.generar_pdf_graficos(df_f, "GRÁFICOS DASHBOARD — PECEPE")
+            st.download_button(
+                "⬇️ Descargar PDF — Gráficos del Dashboard (A4)",
+                data=_pdf_graf,
+                file_name="graficos_dashboard.pdf",
+                mime="application/pdf",
+                key="dl_pdf_graficos_dash",
+            )
 
 
 # --------------------------------------------------------------------------- #
@@ -1134,12 +1147,14 @@ with tab_compartir:
                             ".spreadsheetml.sheet"
                         ),
                     )
-            st.info(
-                "💡 **Para compartir gráficos en WhatsApp:** Ve a la pestaña "
-                "📊 Dashboard, pasa el cursor sobre cualquier gráfico y "
-                "haz clic en el ícono de cámara 📷 (esquina superior derecha) "
-                "para guardar el gráfico como imagen PNG. "
-                "Luego adjunta el PNG en WhatsApp."
+            _pdf_graf_wa = dash.generar_pdf_graficos(
+                df_wa, "GRÁFICOS DASHBOARD — PECEPE")
+            st.download_button(
+                "⬇️ Descargar PDF — Gráficos del Dashboard",
+                data=_pdf_graf_wa,
+                file_name="graficos_dashboard.pdf",
+                mime="application/pdf",
+                key="dl_pdf_graficos_wa",
             )
 
         # --- PDF para compartir (PC / tablet / celular) --------------------- #
@@ -1171,6 +1186,17 @@ with tab_compartir:
                         mime="application/pdf",
                         key="dl_pdf_reporte",
                     )
+
+            # PDF de gráficos del Dashboard
+            _pdf_graf_comp = dash.generar_pdf_graficos(
+                df_wa, "GRÁFICOS DASHBOARD — PECEPE")
+            st.download_button(
+                "⬇️ Descargar PDF — Gráficos del Dashboard",
+                data=_pdf_graf_comp,
+                file_name="graficos_dashboard.pdf",
+                mime="application/pdf",
+                key="dl_pdf_graficos_comp",
+            )
 
             st.divider()
             _tab_pc, _tab_mov = st.tabs(

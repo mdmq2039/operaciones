@@ -572,6 +572,11 @@ def exportar_tareo_trabajado(df: pd.DataFrame, cfg: Config) -> bytes:
                     v = hours_to_hhmm(float(v)) if not (isinstance(v, float) and pd.isna(v)) else None
                 except (TypeError, ValueError):
                     v = None
+            elif col == "TTHH" and v is not None:
+                try:
+                    v = round(float(v), 2) if not (isinstance(v, float) and pd.isna(v)) else None
+                except (TypeError, ValueError):
+                    v = None
             elif col == "GRUPO" and v is not None:
                 v = nombre_grupo(v)
             elif isinstance(v, float) and pd.isna(v):
@@ -583,7 +588,10 @@ def exportar_tareo_trabajado(df: pd.DataFrame, cfg: Config) -> bytes:
     _center = Alignment(horizontal="center", vertical="center")
     for r in range(2, ws.max_row + 1):
         for c, col in enumerate(cols, start=1):
-            ws.cell(row=r, column=c).alignment = _left if col == "NOMBRES" else _center
+            cell = ws.cell(row=r, column=c)
+            cell.alignment = _left if col == "NOMBRES" else _center
+            if col == "TTHH":
+                cell.number_format = "0.00"
 
     for c, col in enumerate(cols, start=1):
         ws.column_dimensions[get_column_letter(c)].width = 30 if col == "NOMBRES" else 12

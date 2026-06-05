@@ -519,3 +519,92 @@ def boton_wa_html(url: str, etiqueta: str = "💬 Abrir WhatsApp") -> str:
         f'font-size:14px;font-weight:600;margin-top:6px;">'
         f'{etiqueta}</button></a>'
     )
+
+
+# --------------------------------------------------------------------------- #
+#  PDF de gráficos del Dashboard (A4 vertical, máx 8 por hoja)                #
+# --------------------------------------------------------------------------- #
+def generar_pdf_graficos(df: "pd.DataFrame", titulo: str = "GRÁFICOS DASHBOARD") -> bytes:
+    """Genera un PDF A4 vertical con los gráficos del dashboard.
+
+    Requiere kaleido (pip install kaleido) para convertir las figuras Plotly a PNG.
+    """
+    from io import BytesIO
+    from reportlab.pdfgen import canvas as _canvas
+    from reportlab.lib.pagesizes import A4
+    from reportlab.lib.utils import ImageReader
+    from reportlab.lib import colors as rc
+    import datetime as _dt2
+
+    # Recopilar figuras
+    figs = [
+        ("Distribución de Turnos", graf_turnos(df)),
+        ("Personas por Grupo y Turno", graf_registros_grupo(df)),
+        ("Condiciones Aplicadas", graf_condiciones(df)),
+        ("Horas Marcación por Grupo", graf_horas_marc_grupo(df)),
+        ("TTHH por Grupo", graf_tthh_grupo(df)),
+        ("Distribución de Horas Extra", graf_dist_horas(df)),
+    ]
+    if "Aprobado" in df.columns:
+        figs.append(("Estado de Aprobación", graf_aprobacion(df)))
+    df_fc = agregar_cols_fecha(df)
+    if "_SEMANA_NUM" in df_fc.columns and not df_fc["_SEMANA_NUM"].isna().all():
+        figs.append(("Registros por Semana", graf_registros_semana(df_fc)))
+        figs.append(("TTHH por Semana", graf_tthh_semana(df_fc)))
+
+    # Convertir a PNG (kaleido)
+    imgs = []
+    for name, fig in figs:
+        try:
+            png = fig.to_image(format="png", width=560, height=370, scale=1.5)
+            imgs.append((name, BytesIO(png)))
+        except Exception:
+            pass
+
+    # Layout A4: 2 columnas × 4 filas = 8 gráficos por hoja
+    W, H = A4
+    ML = MR = 14
+    MT = MB = 14
+    TITLE_H = 28
+    COLS, ROWS = 2, 4
+    GAP = 6
+
+    chart_w = (W - ML - MR - GAP) / COLS
+    chart_h = (H - MT - MB - TITLE_H - (ROWS - 1) * GAP) / ROWS
+    azul = rc.HexColor("#1F4E9B")
+
+    buf = BytesIO()
+    c = _canvas.Canvas(buf, pagesize=A4)
+
+    def _cabecera(pag):
+        c.setFont("Helvetica-Bold", 13)
+        c.setFillColor(azul)
+        sufijo = f"  ({pag + 1})" if pag > 0 else ""
+        c.drawString(ML, H - MT - 15, titulo + sufijo)
+        c.setFont("Helvetica", 7)
+        c.setFillColor(rc.HexColor("#5b6770"))
+        hoy = _dt2.date.today().strftime("%d/%m/%Y")
+        c.drawRightString(W - MR, H - MT - 15, f"PECEPE · {hoy}")
+        c.setStrokeColor(azul)
+        c.setLineWidth(0.5)
+        c.line(ML, H - MT - TITLE_H, W - MR, H - MT - TITLE_H)
+
+    per_page = COLS * ROWS
+    for pag_n, inicio in enumerate(range(0, len(imgs), per_page)):
+        _cabecera(pag_n)
+        for i, (_, img_buf) in enumerate(imgs[inicio:inicio + per_page]):
+            col = i % COLS
+            row = i // COLS
+            x = ML + col * (chart_w + GAP)
+            y = H - MT - TITLE_H - (row + 1) * chart_h - row * GAP
+            img_buf.seek(0)
+            try:
+                c.drawImage(ImageReader(img_buf), x, y,
+                            width=chart_w, height=chart_h,
+                            preserveAspectRatio=True, anchor="nw")
+            except Exception:
+                pass
+        c.showPage()
+
+    c.save()
+    return buf.getvalue()
