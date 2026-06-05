@@ -833,7 +833,7 @@ def generar_pdf_graficos(df: "pd.DataFrame", titulo: str = "INFORME DE OPERACION
     HDR_LINE = H - B1 - 44        # y de la línea azul de cierre = 754
 
     # Pie de página
-    FTR = 60                       # pt reservados desde abajo (compactado)
+    FTR = 88                       # pt reservados desde abajo
 
     # Área de gráficos
     CP   = 8
@@ -901,24 +901,24 @@ def generar_pdf_graficos(df: "pd.DataFrame", titulo: str = "INFORME DE OPERACION
         c.line(0, HDR_LINE, W, HDR_LINE)
 
     # ── Pie de página ────────────────────────────────────────────────────────
-    def _pie(pag):
+    def _pie(pag, total_pag):
         # Línea divisoria superior del pie
         c.setStrokeColor(AZ1)
         c.setLineWidth(1.5)
         c.line(0, FTR, W, FTR)
 
-        # Título sin fondo coloreado
-        TBAR = 14
-        c.setFont("Helvetica-Bold", 8.5)
-        c.setFillColor(AZ1)
-        c.drawCentredString(W / 2, FTR - TBAR + 4,
-                            "APROBACIÓN Y AUTORIZACIÓN DEL INFORME")
-
-        # Dos bloques simétricos compactos (solo rol + nombre)
+        PFOOT = 14   # franja inferior independiente (Emitido / Hoja)
+        TBAR  = 14   # título "APROBACIÓN Y AUTORIZACIÓN"
         GAP_B = 6
         BW    = (W - GAP_B) / 2
-        BY    = 2
-        BH    = FTR - TBAR - BY - 2
+        BY0   = PFOOT + 2            # base y de los bloques
+        BH    = FTR - TBAR - BY0 - 2 # 88-14-16-2 = 56 pt
+
+        # Título sin fondo coloreado
+        c.setFont("Helvetica-Bold", 8.5)
+        c.setFillColor(AZ1)
+        c.drawCentredString(W / 2, BY0 + BH + TBAR // 2 - 3,
+                            "APROBACIÓN Y AUTORIZACIÓN DEL INFORME")
 
         for i, (rol, nombre) in enumerate([
             ("COORDINADOR", coordinador or ""),
@@ -930,25 +930,43 @@ def generar_pdf_graficos(df: "pd.DataFrame", titulo: str = "INFORME DE OPERACION
             c.setFillColor(BLA)
             c.setStrokeColor(AZ1)
             c.setLineWidth(0.5)
-            c.rect(bx, BY, BW, BH, fill=1, stroke=1)
+            c.rect(bx, BY0, BW, BH, fill=1, stroke=1)
 
             # Rol
             c.setFont("Helvetica-Bold", 8.5)
             c.setFillColor(AZ1)
-            c.drawString(bx + 8, BY + BH - 14, rol)
+            c.drawString(bx + 8, BY0 + BH - 14, rol)
 
             # Nombre
             c.setFont("Helvetica-Bold", 9)
             c.setFillColor(TXT)
-            c.drawString(bx + 8, BY + BH - 28, nombre if nombre else "—")
+            c.drawString(bx + 8, BY0 + BH - 27, nombre if nombre else "—")
+
+            # Etiqueta fecha y hora de aprobación
+            c.setFont("Helvetica", 7)
+            c.setFillColor(GRY)
+            c.drawString(bx + 8, BY0 + BH - 40, "Fecha y hora de aprobación:")
+
+            # Valor fecha
+            c.setFont("Helvetica-Bold", 8)
+            c.setFillColor(TXT)
+            c.drawString(bx + 8, BY0 + BH - 52, fecha_gen)
+
+        # ── Franja inferior: Emitido (centro-derecha) · Hoja X/Y (extremo derecho)
+        c.setFont("Helvetica", 7)
+        c.setFillColor(GRY)
+        c.drawRightString(W / 2 + 60, PFOOT // 2 - 2, f"Emitido: {fecha_gen}")
+        c.drawRightString(W - MR, PFOOT // 2 - 2,
+                          f"Hoja {pag + 1}/{total_pag}")
 
     # ── Dibujar páginas ──────────────────────────────────────────────────────
-    per_page  = COLS * ROWS
-    total_img = max(len(imgs), 1)
+    per_page   = COLS * ROWS
+    total_img  = max(len(imgs), 1)
+    total_pag  = (total_img + per_page - 1) // per_page
 
     for pag_n, inicio in enumerate(range(0, total_img, per_page)):
         _cabecera(pag_n)
-        _pie(pag_n)
+        _pie(pag_n, total_pag)
 
         page_imgs = imgs[inicio:inicio + per_page]
         n_page    = len(page_imgs)
