@@ -525,43 +525,220 @@ def boton_wa_html(url: str, etiqueta: str = "💬 Abrir WhatsApp") -> str:
 #  PDF de gráficos del Dashboard (A4 vertical, máx 8 por hoja)                #
 # --------------------------------------------------------------------------- #
 def generar_pdf_graficos(df: "pd.DataFrame", titulo: str = "GRÁFICOS DASHBOARD") -> bytes:
-    """Genera un PDF A4 vertical con los gráficos del dashboard.
-
-    Requiere kaleido (pip install kaleido) para convertir las figuras Plotly a PNG.
-    """
+    """Genera un PDF A4 vertical con los gráficos del dashboard usando matplotlib."""
     from io import BytesIO
     from reportlab.pdfgen import canvas as _canvas
     from reportlab.lib.pagesizes import A4
     from reportlab.lib.utils import ImageReader
     from reportlab.lib import colors as rc
     import datetime as _dt2
+    import matplotlib
+    matplotlib.use("Agg")
+    import matplotlib.pyplot as plt
 
-    # Recopilar figuras
-    figs = [
-        ("Distribución de Turnos", graf_turnos(df)),
-        ("Personas por Grupo y Turno", graf_registros_grupo(df)),
-        ("Condiciones Aplicadas", graf_condiciones(df)),
-        ("Horas Marcación por Grupo", graf_horas_marc_grupo(df)),
-        ("TTHH por Grupo", graf_tthh_grupo(df)),
-        ("Distribución de Horas Extra", graf_dist_horas(df)),
-    ]
-    if "Aprobado" in df.columns:
-        figs.append(("Estado de Aprobación", graf_aprobacion(df)))
-    df_fc = agregar_cols_fecha(df)
-    if "_SEMANA_NUM" in df_fc.columns and not df_fc["_SEMANA_NUM"].isna().all():
-        figs.append(("Registros por Semana", graf_registros_semana(df_fc)))
-        figs.append(("TTHH por Semana", graf_tthh_semana(df_fc)))
+    AZ = "#1F4E9B"
+    AM = "#F59E0B"
+    AN = "#1E3A8A"
+    VE = "#10B981"
+    RO = "#EF4444"
+    MO = "#8B5CF6"
+    CY = "#06B6D4"
+    GR = "#D1D5DB"
 
-    # Convertir a PNG (kaleido)
+    def _buf(fig):
+        b = BytesIO()
+        fig.savefig(b, format="png", dpi=130, bbox_inches="tight",
+                    facecolor="white", edgecolor="none")
+        plt.close(fig)
+        b.seek(0)
+        return b
+
     imgs = []
-    for name, fig in figs:
-        try:
-            png = fig.to_image(format="png", width=560, height=370, scale=1.5)
-            imgs.append((name, BytesIO(png)))
-        except Exception:
-            pass
 
-    # Layout A4: 2 columnas × 4 filas = 8 gráficos por hoja
+    # 1) Donut – Turnos
+    try:
+        cnt = df["TURNO"].value_counts()
+        if len(cnt) > 0:
+            fig, ax = plt.subplots(figsize=(4.5, 3.2))
+            colors = [AM if t == "DIA" else AN for t in cnt.index]
+            ax.pie(cnt.values, labels=cnt.index, colors=colors,
+                   autopct="%1.1f%%", pctdistance=0.72, startangle=90,
+                   wedgeprops=dict(width=0.52))
+            ax.set_title("Distribucion de Turnos", color=AZ, fontweight="bold", fontsize=10)
+            imgs.append(("Distribucion de Turnos", _buf(fig)))
+    except Exception:
+        pass
+
+    # 2) Barras apiladas – Personas por Grupo y Turno
+    try:
+        cnt2 = df.groupby(["GRUPO", "TURNO"]).size().unstack(fill_value=0)
+        fig, ax = plt.subplots(figsize=(4.5, 3.2))
+        bottom = None
+        for turno, color in [("DIA", AM), ("NOCHE", AN)]:
+            if turno in cnt2.columns:
+                vals = cnt2[turno].values.astype(float)
+                ax.bar(cnt2.index.astype(str), vals, bottom=bottom, label=turno, color=color)
+                bottom = vals.copy() if bottom is None else bottom + vals
+        ax.set_xlabel("Grupo", fontsize=8)
+        ax.set_ylabel("Personas", fontsize=8)
+        ax.set_title("Personas por Grupo y Turno", color=AZ, fontweight="bold", fontsize=10)
+        ax.legend(fontsize=7, loc="upper right")
+        ax.tick_params(labelsize=7)
+        imgs.append(("Personas por Grupo y Turno", _buf(fig)))
+    except Exception:
+        pass
+
+    # 3) Donut – Condiciones de Jornada
+    try:
+        corrido = int(df["Corrido"].sum()) if "Corrido" in df.columns else 0
+        teorico = int(df["Teorico12"].sum()) if "Teorico12" in df.columns else 0
+        normal  = len(df) - corrido - teorico
+        pares = [(v, l, c) for v, l, c in
+                 zip([normal, corrido, teorico],
+                     ["Normal", "Corrido (C)", "Teorico 12h"],
+                     [VE, MO, CY]) if v > 0]
+        if pares:
+            vals, lbls, cols = zip(*pares)
+            fig, ax = plt.subplots(figsize=(4.5, 3.2))
+            ax.pie(vals, labels=lbls, colors=cols,
+                   autopct="%1.1f%%", pctdistance=0.72, startangle=90,
+                   wedgeprops=dict(width=0.48))
+            ax.set_title("Condiciones de Jornada", color=AZ, fontweight="bold", fontsize=10)
+            imgs.append(("Condiciones de Jornada", _buf(fig)))
+    except Exception:
+        pass
+
+    # 4) Barras horizontales – Prom. Horas Marcacion por Grupo
+    try:
+        agg4 = (df.groupby("GRUPO")["HORAS_MARCACION"].mean()
+                  .reset_index().sort_values("HORAS_MARCACION"))
+        fig, ax = plt.subplots(figsize=(4.5, 3.2))
+        bars = ax.barh(agg4["GRUPO"].astype(str), agg4["HORAS_MARCACION"], color=AZ)
+        for bar, val in zip(bars, agg4["HORAS_MARCACION"]):
+            ax.text(val + 0.05, bar.get_y() + bar.get_height() / 2,
+                    f"{val:.1f}h", va="center", fontsize=7)
+        ax.set_xlabel("Horas promedio", fontsize=8)
+        ax.set_title("Prom. Horas Marcacion por Grupo", color=AZ, fontweight="bold", fontsize=10)
+        ax.tick_params(labelsize=7)
+        imgs.append(("Horas Marcacion por Grupo", _buf(fig)))
+    except Exception:
+        pass
+
+    # 5) Barras apiladas – TTHH por Grupo
+    try:
+        cols_t = [c for c in ["hora normal", "hora 25", "hora 35"] if c in df.columns]
+        if cols_t:
+            agg5 = df.groupby("GRUPO")[cols_t].sum().reset_index()
+            agg5 = agg5.sort_values(cols_t[0], ascending=False)
+            fig, ax = plt.subplots(figsize=(4.5, 3.2))
+            bottom = None
+            for col, color, lbl in [("hora normal", VE, "Normal"),
+                                     ("hora 25", AM, "Hora 25%"),
+                                     ("hora 35", RO, "Hora 35%")]:
+                if col in cols_t:
+                    vals = agg5[col].values.astype(float)
+                    ax.bar(agg5["GRUPO"].astype(str), vals, bottom=bottom,
+                           label=lbl, color=color)
+                    bottom = vals.copy() if bottom is None else bottom + vals
+            ax.set_xlabel("Grupo", fontsize=8)
+            ax.set_ylabel("Horas", fontsize=8)
+            ax.set_title("TTHH Desglosado por Grupo", color=AZ, fontweight="bold", fontsize=10)
+            ax.legend(fontsize=7, loc="upper right")
+            ax.tick_params(labelsize=7)
+            imgs.append(("TTHH por Grupo", _buf(fig)))
+    except Exception:
+        pass
+
+    # 6) Donut – Distribucion Total de Horas Extra
+    try:
+        hn  = float(df["hora normal"].sum()) if "hora normal" in df.columns else 0
+        h25 = float(df["hora 25"].sum())     if "hora 25"     in df.columns else 0
+        h35 = float(df["hora 35"].sum())     if "hora 35"     in df.columns else 0
+        pares6 = [(v, l, c) for v, l, c in
+                  zip([hn, h25, h35],
+                      ["Hora Normal", "Hora 25%", "Hora 35%"],
+                      [VE, AM, RO]) if v > 0]
+        if pares6:
+            vals6, lbls6, cols6 = zip(*pares6)
+            fig, ax = plt.subplots(figsize=(4.5, 3.2))
+            ax.pie(vals6, labels=lbls6, colors=cols6,
+                   autopct="%1.1f%%", pctdistance=0.72, startangle=90,
+                   wedgeprops=dict(width=0.52))
+            ax.set_title("Distribucion Total de Horas Extra", color=AZ, fontweight="bold", fontsize=10)
+            imgs.append(("Distribucion de Horas Extra", _buf(fig)))
+    except Exception:
+        pass
+
+    # 7) Barras horizontales apiladas – Aprobacion por Grupo
+    try:
+        if "Aprobado" in df.columns:
+            agg7 = df.groupby("GRUPO")["Aprobado"].agg(
+                Aprobados=lambda x: int(x.sum()), Total="count"
+            ).reset_index()
+            agg7["Pendientes"] = agg7["Total"] - agg7["Aprobados"]
+            agg7 = agg7.sort_values("Total")
+            fig, ax = plt.subplots(figsize=(4.5, 3.2))
+            ax.barh(agg7["GRUPO"].astype(str), agg7["Aprobados"],
+                    color=VE, label="Aprobados")
+            ax.barh(agg7["GRUPO"].astype(str), agg7["Pendientes"],
+                    left=agg7["Aprobados"].values, color=GR, label="Pendientes")
+            ax.set_xlabel("Personas", fontsize=8)
+            ax.set_title("Estado de Aprobacion por Grupo", color=AZ, fontweight="bold", fontsize=10)
+            ax.legend(fontsize=7, loc="upper right")
+            ax.tick_params(labelsize=7)
+            imgs.append(("Estado de Aprobacion", _buf(fig)))
+    except Exception:
+        pass
+
+    # 8 & 9) Por Semana (si hay fechas)
+    try:
+        df_fc = agregar_cols_fecha(df)
+        if "_SEMANA_NUM" in df_fc.columns and not df_fc["_SEMANA_NUM"].isna().all():
+            df_s = df_fc.dropna(subset=["_SEMANA_NUM"]).copy()
+            df_s["_SEMANA_NUM"] = df_s["_SEMANA_NUM"].astype(int)
+
+            sw = (df_s.groupby(["_SEMANA_NUM", "_SEMANA_LABEL", "TURNO"])
+                      .size().reset_index(name="Reg")
+                      .sort_values("_SEMANA_NUM"))
+            labels_s = sw.drop_duplicates("_SEMANA_NUM").sort_values("_SEMANA_NUM")["_SEMANA_LABEL"].tolist()
+            nums_s   = sw["_SEMANA_NUM"].unique()
+            fig, ax = plt.subplots(figsize=(4.5, 3.2))
+            bottom = None
+            for turno, color in [("DIA", AM), ("NOCHE", AN)]:
+                sub = sw[sw["TURNO"] == turno].set_index("_SEMANA_NUM")
+                vals = [float(sub.loc[n, "Reg"]) if n in sub.index else 0 for n in nums_s]
+                ax.bar(range(len(nums_s)), vals, bottom=bottom, label=turno, color=color)
+                bottom = [v for v in vals] if bottom is None else [b + v for b, v in zip(bottom, vals)]
+            ax.set_xticks(range(len(nums_s)))
+            ax.set_xticklabels(labels_s, rotation=30, ha="right", fontsize=6)
+            ax.set_ylabel("Personas", fontsize=8)
+            ax.set_title("Registros por Semana", color=AZ, fontweight="bold", fontsize=10)
+            ax.legend(fontsize=7)
+            imgs.append(("Registros por Semana", _buf(fig)))
+
+            cols_tw = [c for c in ["hora normal", "hora 25", "hora 35"] if c in df_s.columns]
+            if cols_tw:
+                agg_sw = (df_s.groupby(["_SEMANA_NUM", "_SEMANA_LABEL"])[cols_tw]
+                              .sum().reset_index().sort_values("_SEMANA_NUM"))
+                fig, ax = plt.subplots(figsize=(4.5, 3.2))
+                bottom = None
+                for col, color, lbl in [("hora normal", VE, "Normal"),
+                                         ("hora 25", AM, "Hora 25%"),
+                                         ("hora 35", RO, "Hora 35%")]:
+                    if col in cols_tw:
+                        vals = agg_sw[col].values.astype(float)
+                        ax.bar(range(len(agg_sw)), vals, bottom=bottom, label=lbl, color=color)
+                        bottom = vals.copy() if bottom is None else bottom + vals
+                ax.set_xticks(range(len(agg_sw)))
+                ax.set_xticklabels(agg_sw["_SEMANA_LABEL"].tolist(), rotation=30, ha="right", fontsize=6)
+                ax.set_ylabel("Horas", fontsize=8)
+                ax.set_title("TTHH por Semana", color=AZ, fontweight="bold", fontsize=10)
+                ax.legend(fontsize=7)
+                imgs.append(("TTHH por Semana", _buf(fig)))
+    except Exception:
+        pass
+
+    # Layout A4: 2 columnas x 4 filas = 8 graficos por hoja
     W, H = A4
     ML = MR = 14
     MT = MB = 14
@@ -589,8 +766,9 @@ def generar_pdf_graficos(df: "pd.DataFrame", titulo: str = "GRÁFICOS DASHBOARD"
         c.setLineWidth(0.5)
         c.line(ML, H - MT - TITLE_H, W - MR, H - MT - TITLE_H)
 
+    total_imgs = max(len(imgs), 1)
     per_page = COLS * ROWS
-    for pag_n, inicio in enumerate(range(0, len(imgs), per_page)):
+    for pag_n, inicio in enumerate(range(0, total_imgs, per_page)):
         _cabecera(pag_n)
         for i, (_, img_buf) in enumerate(imgs[inicio:inicio + per_page]):
             col = i % COLS
