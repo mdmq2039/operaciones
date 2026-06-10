@@ -513,7 +513,8 @@ if tab_condiciones is not None:
         )
 
         # --- Selector de grupo (coordinador) / bloqueado (supervisor) ----- #
-        grupos_disp = sorted(st.session_state.tabla["GRUPO"].unique().tolist(), key=str)
+        _grupos_data = st.session_state.tabla["GRUPO"].dropna().unique().tolist()
+        grupos_disp = sorted(list(set([str(g) for g in _grupos_data] + auth.GRUPOS_POR_DEFECTO)), key=str)
         _fmt_g = lambda g: core.nombre_grupo(g) if g != "(Todos los grupos)" else g
         if ES_COORD:
             gsel = st.selectbox(
@@ -652,7 +653,8 @@ if tab_aprobacion is not None:
             "aprueba. Sólo lo aprobado pasa al REPORTE_OPERACIONES."
         )
 
-        grupos_disp = sorted(st.session_state.tabla["GRUPO"].unique().tolist(), key=str)
+        _grupos_data = st.session_state.tabla["GRUPO"].dropna().unique().tolist()
+        grupos_disp = sorted(list(set([str(g) for g in _grupos_data] + auth.GRUPOS_POR_DEFECTO)), key=str)
         _fmt_g2 = lambda g: core.nombre_grupo(g) if g != "(Todos los grupos)" else g
         if ES_COORD:
             gsel = st.selectbox(
@@ -930,7 +932,8 @@ with tab_dashboard:
 
         # --- Filtros -------------------------------------------------------- #
         st.markdown("### 🔍 Filtros del Dashboard")
-        grupos_disp_dash = sorted(df_dash["GRUPO"].unique().tolist(), key=str)
+        _grupos_data = df_dash["GRUPO"].dropna().unique().tolist()
+        grupos_disp_dash = sorted(list(set([str(g) for g in _grupos_data] + auth.GRUPOS_POR_DEFECTO)), key=str)
         col_f1, col_f2, col_f3 = st.columns([3, 1, 1])
         with col_f1:
             if ES_COORD:
