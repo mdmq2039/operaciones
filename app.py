@@ -234,7 +234,7 @@ with st.sidebar:
         grupos_txt = st.text_input(
             "Grupos SIN refrigerio (separados por coma)",
             ", ".join(c.grupos_sin_refrigerio),
-            help="Estos grupos no descuentan refrigerio. Ej: E, PCP, N, 5",
+            help="Estos grupos no descuentan refrigerio. Ej: E, PCP, N, 5, IQF",
         )
         c.grupos_sin_refrigerio = tuple(
             g.strip() for g in grupos_txt.split(",") if g.strip()
@@ -838,7 +838,7 @@ if tab_users is not None:
                 np_ = st.text_input("Contraseña (vacío = no cambiar)", type="password")
             with cu2:
                 nrol = st.selectbox("Rol", ["supervisor", "coordinador"])
-                ngrupo = st.text_input("Grupo (sólo supervisor, ej. N, E, PCP, 1..5)")
+                ngrupo = st.text_input("Grupo (sólo supervisor, ej. N, E, PCP, 1..5, IQF)")
             guardar = st.form_submit_button("💾 Guardar usuario", type="primary")
         if guardar:
             if not nu.strip():
