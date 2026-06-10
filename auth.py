@@ -23,7 +23,7 @@ RUTA_BASE = os.path.dirname(os.path.abspath(__file__))
 ARCHIVO_USUARIOS = os.path.join(RUTA_BASE, "usuarios.json")
 
 # Grupos conocidos del tareo (se pueden ampliar desde el panel de usuarios)
-GRUPOS_POR_DEFECTO = ["N", "E", "PCP", "1", "2", "3", "4", "5", "IQF"]
+GRUPOS_POR_DEFECTO = ["1", "2", "3", "4", "5", "IQF", "E", "N", "PCP"]
 
 
 # --------------------------------------------------------------------------- #
