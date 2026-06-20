@@ -19,7 +19,7 @@
 - [x] 14. Merge a `main` y push para despliegue en Render
 
 ## Plan: Sorteo al Azar (Raffle App)
-- [ ] 15. Crear archivo `sorteo.html` — aplicación web standalone con:
+- [x] 15. Crear archivo `sorteo.html` — aplicación web standalone con:
   - Carga de archivo Excel (.xlsx) con columnas: Nombre, Turno, Empresa
   - Selección de cantidad de ganadores
   - Efecto visual de nombres girando en pantalla

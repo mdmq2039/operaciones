@@ -1,0 +1,699 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>Sorteo al Azar</title>
+<script src="https://cdn.sheetjs.com/xlsx-0.20.0/package/dist/xlsx.full.min.js"></script>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+:root{
+  --primary:#1a1a2e;
+  --secondary:#16213e;
+  --accent:#0f3460;
+  --gold:#e94560;
+  --gold-light:#ff6b6b;
+  --text:#eee;
+  --card-bg:rgba(255,255,255,.07);
+}
+body{
+  font-family:'Segoe UI',system-ui,sans-serif;
+  background:linear-gradient(135deg,var(--primary),var(--secondary),var(--accent));
+  min-height:100vh;color:var(--text);
+  overflow-x:hidden;
+}
+.screen{display:none;flex-direction:column;align-items:center;
+  min-height:100vh;padding:20px;justify-content:center;}
+.screen.active{display:flex}
+
+/* ── HEADER ── */
+.logo{font-size:1.1rem;font-weight:700;letter-spacing:2px;
+  text-transform:uppercase;opacity:.7;margin-bottom:6px}
+.company-name{font-size:1.8rem;font-weight:800;
+  background:linear-gradient(135deg,var(--gold),var(--gold-light),#ffd93d);
+  -webkit-background-clip:text;-webkit-text-fill-color:transparent;
+  text-align:center;margin-bottom:4px}
+.event-title{font-size:1rem;opacity:.6;margin-bottom:24px;text-align:center}
+
+/* ── UPLOAD ── */
+.upload-zone{
+  border:2px dashed rgba(233,69,96,.5);border-radius:20px;
+  padding:40px 30px;text-align:center;width:100%;max-width:380px;
+  background:var(--card-bg);backdrop-filter:blur(10px);
+  transition:all .3s;cursor:pointer;
+}
+.upload-zone:active{border-color:var(--gold);background:rgba(233,69,96,.1)}
+.upload-icon{font-size:3rem;margin-bottom:12px}
+.upload-zone p{font-size:.95rem;opacity:.8}
+.upload-zone small{opacity:.5;display:block;margin-top:8px}
+#fileInput{display:none}
+
+.info-card{
+  background:var(--card-bg);backdrop-filter:blur(10px);
+  border-radius:16px;padding:20px;margin-top:20px;
+  width:100%;max-width:380px;text-align:center;
+}
+.info-card h3{font-size:1rem;opacity:.7;margin-bottom:8px}
+.info-card .count{font-size:2.5rem;font-weight:800;color:var(--gold)}
+
+.winners-input{
+  display:flex;align-items:center;gap:12px;margin-top:20px;
+  justify-content:center;
+}
+.winners-input label{font-size:.95rem;opacity:.8}
+.winners-input input{
+  width:70px;padding:10px;border-radius:12px;border:2px solid rgba(233,69,96,.4);
+  background:rgba(255,255,255,.1);color:#fff;font-size:1.3rem;
+  text-align:center;font-weight:700;
+}
+.winners-input input:focus{outline:none;border-color:var(--gold)}
+
+.btn{
+  padding:14px 40px;border:none;border-radius:50px;font-size:1.1rem;
+  font-weight:700;cursor:pointer;transition:all .3s;
+  text-transform:uppercase;letter-spacing:1px;margin-top:24px;
+}
+.btn-primary{
+  background:linear-gradient(135deg,var(--gold),var(--gold-light));
+  color:#fff;box-shadow:0 4px 25px rgba(233,69,96,.4);
+}
+.btn-primary:active{transform:scale(.96);box-shadow:0 2px 15px rgba(233,69,96,.3)}
+.btn-primary:disabled{opacity:.4;transform:none}
+
+/* ── RAFFLE SCREEN ── */
+#raffleScreen{position:relative;overflow:hidden;padding:20px}
+
+.raffle-header{text-align:center;margin-bottom:16px;z-index:2;position:relative}
+.raffle-header .company-name{font-size:1.5rem}
+.progress-text{font-size:.85rem;opacity:.6;margin-top:4px}
+
+.slot-container{
+  width:100%;max-width:380px;height:280px;
+  border-radius:20px;overflow:hidden;position:relative;
+  background:var(--card-bg);backdrop-filter:blur(10px);
+  border:1px solid rgba(233,69,96,.2);
+  margin-bottom:20px;
+}
+.slot-mask{
+  position:absolute;top:0;left:0;right:0;bottom:0;
+  pointer-events:none;z-index:2;
+  background:linear-gradient(to bottom,
+    var(--primary) 0%,transparent 25%,transparent 75%,var(--primary) 100%);
+}
+.slot-highlight{
+  position:absolute;top:50%;left:0;right:0;height:64px;
+  transform:translateY(-50%);
+  border-top:2px solid var(--gold);border-bottom:2px solid var(--gold);
+  background:rgba(233,69,96,.08);z-index:1;
+}
+.slot-track{
+  position:absolute;top:0;left:0;right:0;
+  transition:none;
+}
+.slot-item{
+  height:64px;display:flex;align-items:center;justify-content:center;
+  flex-direction:column;padding:4px 16px;
+}
+.slot-item .name{font-size:1.1rem;font-weight:700;color:#fff}
+.slot-item .detail{font-size:.7rem;opacity:.5;margin-top:2px}
+
+/* countdown overlay */
+.countdown-overlay{
+  position:fixed;top:0;left:0;right:0;bottom:0;
+  background:rgba(10,10,30,.92);display:none;
+  align-items:center;justify-content:center;z-index:100;
+  flex-direction:column;
+}
+.countdown-overlay.active{display:flex}
+.countdown-number{
+  font-size:8rem;font-weight:900;
+  background:linear-gradient(135deg,var(--gold),#ffd93d);
+  -webkit-background-clip:text;-webkit-text-fill-color:transparent;
+  animation:countPulse .5s ease-out;
+}
+.countdown-label{font-size:1.1rem;opacity:.5;margin-top:8px}
+@keyframes countPulse{
+  0%{transform:scale(2);opacity:0}
+  100%{transform:scale(1);opacity:1}
+}
+
+.btn-winner{
+  background:linear-gradient(135deg,#ffd93d,#ff6b35,var(--gold));
+  color:#fff;padding:16px 50px;font-size:1.2rem;
+  box-shadow:0 4px 30px rgba(255,217,61,.3);
+  animation:glowPulse 2s infinite;
+}
+@keyframes glowPulse{
+  0%,100%{box-shadow:0 4px 30px rgba(255,217,61,.3)}
+  50%{box-shadow:0 4px 50px rgba(255,217,61,.6)}
+}
+.btn-winner:active{transform:scale(.96)}
+.btn-winner:disabled{animation:none;opacity:.4}
+
+/* ── WINNER REVEAL ── */
+.winner-reveal{
+  position:fixed;top:0;left:0;right:0;bottom:0;
+  background:rgba(10,10,30,.95);display:none;
+  align-items:center;justify-content:center;z-index:200;
+  flex-direction:column;
+}
+.winner-reveal.active{display:flex}
+.winner-badge{
+  font-size:1rem;font-weight:700;color:var(--gold);
+  text-transform:uppercase;letter-spacing:3px;margin-bottom:10px;
+  opacity:0;animation:fadeDown .5s .2s forwards;
+}
+.winner-name-big{
+  font-size:2.2rem;font-weight:900;text-align:center;
+  background:linear-gradient(135deg,#ffd93d,#ff6b35,var(--gold));
+  -webkit-background-clip:text;-webkit-text-fill-color:transparent;
+  opacity:0;animation:fadeDown .5s .5s forwards;
+  padding:0 20px;
+}
+.winner-details{
+  font-size:1rem;opacity:0;margin-top:12px;text-align:center;
+  animation:fadeDown .5s .8s forwards;
+}
+.winner-details span{
+  display:inline-block;padding:4px 14px;margin:4px;
+  background:rgba(233,69,96,.2);border-radius:20px;font-size:.85rem;
+}
+@keyframes fadeDown{
+  0%{opacity:0;transform:translateY(-20px)}
+  100%{opacity:1;transform:translateY(0)}
+}
+.winner-close-btn{
+  margin-top:30px;opacity:0;animation:fadeDown .5s 1.1s forwards;
+}
+
+/* confetti canvas */
+#confettiCanvas{
+  position:fixed;top:0;left:0;width:100%;height:100%;
+  pointer-events:none;z-index:250;
+}
+
+/* ── WINNERS LIST ── */
+.winners-list{
+  width:100%;max-width:380px;margin-top:16px;
+}
+.winners-list h3{
+  font-size:.9rem;opacity:.5;text-transform:uppercase;
+  letter-spacing:2px;margin-bottom:10px;text-align:center;
+}
+.winner-card{
+  background:var(--card-bg);backdrop-filter:blur(10px);
+  border-radius:14px;padding:14px 18px;margin-bottom:8px;
+  display:flex;align-items:center;gap:14px;
+  border-left:3px solid var(--gold);
+  animation:slideIn .4s ease-out;
+}
+@keyframes slideIn{
+  0%{opacity:0;transform:translateX(-30px)}
+  100%{opacity:1;transform:translateX(0)}
+}
+.winner-num{
+  width:32px;height:32px;border-radius:50%;
+  background:linear-gradient(135deg,var(--gold),var(--gold-light));
+  display:flex;align-items:center;justify-content:center;
+  font-weight:800;font-size:.9rem;color:#fff;flex-shrink:0;
+}
+.winner-info{flex:1;min-width:0}
+.winner-info .wname{font-weight:700;font-size:.95rem;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.winner-info .wmeta{font-size:.75rem;opacity:.5;margin-top:2px}
+
+.btn-new{
+  background:rgba(255,255,255,.1);color:#fff;
+  border:1px solid rgba(255,255,255,.2);margin-top:20px;
+  font-size:.9rem;padding:12px 30px;
+}
+.btn-new:active{background:rgba(255,255,255,.15)}
+
+/* particles background */
+.particles{
+  position:fixed;top:0;left:0;width:100%;height:100%;
+  pointer-events:none;z-index:0;overflow:hidden;
+}
+.particle{
+  position:absolute;border-radius:50%;opacity:.15;
+  animation:floatUp linear infinite;
+}
+@keyframes floatUp{
+  0%{transform:translateY(100vh) scale(0)}
+  50%{opacity:.3}
+  100%{transform:translateY(-10vh) scale(1);opacity:0}
+}
+</style>
+</head>
+<body>
+
+<div class="particles" id="particles"></div>
+<canvas id="confettiCanvas"></canvas>
+
+<!-- ══════ SCREEN 1: UPLOAD ══════ -->
+<div class="screen active" id="uploadScreen">
+  <div class="logo">★ Sorteo ★</div>
+  <div class="company-name" id="companyTitle">Sorteo al Azar</div>
+  <div class="event-title">Carga tu lista de participantes</div>
+
+  <div class="upload-zone" id="uploadZone" onclick="document.getElementById('fileInput').click()">
+    <div class="upload-icon">📂</div>
+    <p>Toca para cargar archivo Excel</p>
+    <small>.xlsx con columnas: Nombre, Turno, Empresa</small>
+  </div>
+  <input type="file" id="fileInput" accept=".xlsx,.xls">
+
+  <div class="info-card" id="infoCard" style="display:none">
+    <h3>Participantes cargados</h3>
+    <div class="count" id="participantCount">0</div>
+    <div class="winners-input">
+      <label>Ganadores:</label>
+      <input type="number" id="winnersCount" min="1" value="1">
+    </div>
+    <button class="btn btn-primary" id="btnStart" onclick="startRaffle()">
+      Iniciar Sorteo
+    </button>
+  </div>
+</div>
+
+<!-- ══════ SCREEN 2: RAFFLE ══════ -->
+<div class="screen" id="raffleScreen">
+  <div class="raffle-header">
+    <div class="logo">★ Sorteo ★</div>
+    <div class="company-name" id="raffleCompany">Sorteo</div>
+    <div class="progress-text" id="progressText">Ganador 1 de 3</div>
+  </div>
+
+  <div class="slot-container" id="slotContainer">
+    <div class="slot-mask"></div>
+    <div class="slot-highlight"></div>
+    <div class="slot-track" id="slotTrack"></div>
+  </div>
+
+  <button class="btn btn-winner" id="btnWinner" onclick="revealWinner()">
+    🏆 Ganador
+  </button>
+
+  <div class="winners-list" id="winnersList">
+    <h3>Ganadores</h3>
+  </div>
+
+  <button class="btn btn-new" onclick="resetAll()" style="display:none" id="btnNewRaffle">
+    Nuevo Sorteo
+  </button>
+</div>
+
+<!-- ══════ COUNTDOWN OVERLAY ══════ -->
+<div class="countdown-overlay" id="countdownOverlay">
+  <div class="countdown-number" id="countdownNum">5</div>
+  <div class="countdown-label">Preparando sorteo...</div>
+</div>
+
+<!-- ══════ WINNER REVEAL OVERLAY ══════ -->
+<div class="winner-reveal" id="winnerReveal">
+  <div class="winner-badge" id="revealBadge">Ganador #1</div>
+  <div class="winner-name-big" id="revealName">Nombre</div>
+  <div class="winner-details" id="revealDetails">
+    <span>Turno</span><span>Empresa</span>
+  </div>
+  <button class="btn btn-primary winner-close-btn" onclick="closeReveal()">Continuar</button>
+</div>
+
+<script>
+let participants = [];
+let remaining = [];
+let winners = [];
+let totalWinners = 1;
+let spinning = false;
+let spinInterval = null;
+let companyName = '';
+
+// ── Particles background ──
+(function(){
+  const c = document.getElementById('particles');
+  for(let i=0;i<20;i++){
+    const p = document.createElement('div');
+    p.className='particle';
+    const s = Math.random()*6+2;
+    p.style.cssText=`width:${s}px;height:${s}px;left:${Math.random()*100}%;`+
+      `animation-duration:${Math.random()*8+6}s;animation-delay:${Math.random()*5}s;`+
+      `background:${['#e94560','#ffd93d','#ff6b6b','#0f3460'][Math.floor(Math.random()*4)]}`;
+    c.appendChild(p);
+  }
+})();
+
+// ── File input ──
+document.getElementById('fileInput').addEventListener('change', function(e){
+  const file = e.target.files[0];
+  if(!file) return;
+  const reader = new FileReader();
+  reader.onload = function(ev){
+    const data = new Uint8Array(ev.target.result);
+    const wb = XLSX.read(data, {type:'array'});
+    const ws = wb.Sheets[wb.SheetNames[0]];
+    const json = XLSX.utils.sheet_to_json(ws, {defval:''});
+    parseParticipants(json);
+  };
+  reader.readAsArrayBuffer(file);
+});
+
+function parseParticipants(rows){
+  participants = [];
+  const colName = findCol(rows, ['nombres completos','nombre','name','nombres','nombre completo']);
+  const colTurno = findCol(rows, ['turno','tuno','shift','horario']);
+  const colEmpresa = findCol(rows, ['empresa','company','compañia','compania','service','services']);
+
+  if(!colName){
+    alert('No se encontró la columna de nombres en el Excel.\nAsegúrate de tener una columna llamada "Nombres completos" o "Nombre".');
+    return;
+  }
+
+  rows.forEach(r => {
+    const name = String(r[colName] || '').trim();
+    if(!name) return;
+    participants.push({
+      name: name,
+      turno: String(r[colTurno] || '').trim(),
+      empresa: String(r[colEmpresa] || '').trim()
+    });
+  });
+
+  if(participants.length > 0 && participants[0].empresa){
+    companyName = participants[0].empresa;
+  }
+
+  document.getElementById('participantCount').textContent = participants.length;
+  document.getElementById('infoCard').style.display = 'block';
+  document.getElementById('winnersCount').max = participants.length;
+  document.getElementById('uploadZone').innerHTML =
+    `<div class="upload-icon">✅</div><p>${participants.length} participantes cargados</p><small>Toca para cargar otro archivo</small>`;
+
+  if(companyName){
+    document.getElementById('companyTitle').textContent = companyName;
+  }
+}
+
+function findCol(rows, aliases){
+  if(!rows.length) return null;
+  const keys = Object.keys(rows[0]);
+  for(const alias of aliases){
+    for(const k of keys){
+      if(k.toLowerCase().trim() === alias) return k;
+    }
+  }
+  for(const alias of aliases){
+    for(const k of keys){
+      if(k.toLowerCase().trim().includes(alias)) return k;
+    }
+  }
+  return null;
+}
+
+// ── Start raffle ──
+function startRaffle(){
+  totalWinners = parseInt(document.getElementById('winnersCount').value) || 1;
+  if(totalWinners > participants.length){
+    totalWinners = participants.length;
+  }
+  if(totalWinners < 1) totalWinners = 1;
+
+  winners = [];
+  remaining = [...participants];
+
+  showScreen('raffleScreen');
+  if(companyName){
+    document.getElementById('raffleCompany').textContent = companyName;
+  }
+  updateProgress();
+
+  runCountdown(function(){
+    buildSlotTrack();
+    startSpinning();
+    document.getElementById('btnWinner').disabled = false;
+  });
+}
+
+function showScreen(id){
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+}
+
+function updateProgress(){
+  const current = winners.length + 1;
+  document.getElementById('progressText').textContent =
+    `Ganador ${Math.min(current, totalWinners)} de ${totalWinners}`;
+}
+
+// ── Countdown ──
+function runCountdown(callback){
+  const overlay = document.getElementById('countdownOverlay');
+  const numEl = document.getElementById('countdownNum');
+  overlay.classList.add('active');
+  let count = 5;
+  numEl.textContent = count;
+  numEl.style.animation = 'none';
+  void numEl.offsetWidth;
+  numEl.style.animation = 'countPulse .5s ease-out';
+
+  const iv = setInterval(()=>{
+    count--;
+    if(count <= 0){
+      clearInterval(iv);
+      numEl.textContent = '🎉';
+      numEl.style.animation = 'none';
+      void numEl.offsetWidth;
+      numEl.style.animation = 'countPulse .5s ease-out';
+      setTimeout(()=>{
+        overlay.classList.remove('active');
+        callback();
+      }, 600);
+      return;
+    }
+    numEl.textContent = count;
+    numEl.style.animation = 'none';
+    void numEl.offsetWidth;
+    numEl.style.animation = 'countPulse .5s ease-out';
+  }, 1000);
+}
+
+// ── Slot machine ──
+function buildSlotTrack(){
+  const track = document.getElementById('slotTrack');
+  track.innerHTML = '';
+  const pool = remaining.length > 0 ? remaining : participants;
+  const totalItems = Math.max(pool.length * 3, 60);
+  for(let i=0; i<totalItems; i++){
+    const p = pool[i % pool.length];
+    const div = document.createElement('div');
+    div.className = 'slot-item';
+    div.innerHTML = `<div class="name">${escHtml(p.name)}</div>
+      <div class="detail">${escHtml(p.turno)} · ${escHtml(p.empresa)}</div>`;
+    track.appendChild(div);
+  }
+}
+
+function startSpinning(){
+  if(spinning) return;
+  spinning = true;
+  const track = document.getElementById('slotTrack');
+  const container = document.getElementById('slotContainer');
+  const itemH = 64;
+  const pool = remaining.length > 0 ? remaining : participants;
+  const totalItems = track.children.length;
+  let pos = 0;
+  const containerH = container.offsetHeight;
+  const centerOffset = (containerH / 2) - (itemH / 2);
+
+  spinInterval = setInterval(()=>{
+    pos -= 8;
+    const maxScroll = -(totalItems * itemH);
+    if(pos <= maxScroll + containerH){
+      pos = 0;
+    }
+    track.style.transform = `translateY(${pos + centerOffset}px)`;
+  }, 30);
+}
+
+function stopSpinning(){
+  spinning = false;
+  if(spinInterval){ clearInterval(spinInterval); spinInterval = null; }
+}
+
+// ── Reveal winner ──
+function revealWinner(){
+  if(winners.length >= totalWinners) return;
+  document.getElementById('btnWinner').disabled = true;
+
+  const idx = Math.floor(Math.random() * remaining.length);
+  const winner = remaining.splice(idx, 1)[0];
+  winners.push(winner);
+
+  slowDown(winner, function(){
+    stopSpinning();
+    showWinnerOverlay(winner);
+  });
+}
+
+function slowDown(winner, callback){
+  const track = document.getElementById('slotTrack');
+  const container = document.getElementById('slotContainer');
+  const itemH = 64;
+  const containerH = container.offsetHeight;
+  const centerOffset = (containerH / 2) - (itemH / 2);
+
+  if(spinInterval){ clearInterval(spinInterval); spinInterval = null; }
+
+  buildSlotTrack();
+  const items = track.children;
+  let targetIdx = -1;
+  for(let i = Math.floor(items.length / 2); i < items.length; i++){
+    const nameEl = items[i].querySelector('.name');
+    if(nameEl && nameEl.textContent === winner.name){
+      targetIdx = i;
+      break;
+    }
+  }
+  if(targetIdx === -1) targetIdx = Math.floor(items.length / 2);
+
+  const targetPos = -(targetIdx * itemH) + centerOffset;
+  let currentPos = 0;
+  const totalDist = Math.abs(targetPos) + 500;
+  let traveled = 0;
+  const speed0 = 12;
+
+  spinInterval = setInterval(()=>{
+    const progress = Math.min(traveled / totalDist, 1);
+    const ease = 1 - Math.pow(progress, 3);
+    const speed = Math.max(speed0 * ease, 0.5);
+    traveled += speed;
+    currentPos -= speed;
+
+    if(currentPos <= targetPos){
+      clearInterval(spinInterval);
+      spinInterval = null;
+      track.style.transform = `translateY(${targetPos}px)`;
+      setTimeout(callback, 300);
+      return;
+    }
+    track.style.transform = `translateY(${currentPos}px)`;
+  }, 30);
+}
+
+function showWinnerOverlay(winner){
+  const overlay = document.getElementById('winnerReveal');
+  document.getElementById('revealBadge').textContent = `🏆 Ganador #${winners.length}`;
+  document.getElementById('revealName').textContent = winner.name;
+  document.getElementById('revealDetails').innerHTML =
+    `<span>📋 ${escHtml(winner.turno)}</span><span>🏢 ${escHtml(winner.empresa)}</span>`;
+
+  overlay.querySelectorAll('[style*="animation"]').forEach(el=>{
+    el.style.animation='none'; void el.offsetWidth;
+  });
+  document.getElementById('revealBadge').style.animation='none';
+  document.getElementById('revealName').style.animation='none';
+  document.getElementById('revealDetails').style.animation='none';
+  void overlay.offsetWidth;
+  document.getElementById('revealBadge').style.animation='fadeDown .5s .2s forwards';
+  document.getElementById('revealName').style.animation='fadeDown .5s .5s forwards';
+  document.getElementById('revealDetails').style.animation='fadeDown .5s .8s forwards';
+
+  overlay.classList.add('active');
+  launchConfetti();
+}
+
+function closeReveal(){
+  document.getElementById('winnerReveal').classList.remove('active');
+  addWinnerCard(winners[winners.length - 1], winners.length);
+  updateProgress();
+
+  if(winners.length >= totalWinners){
+    document.getElementById('btnWinner').style.display = 'none';
+    document.getElementById('btnNewRaffle').style.display = 'block';
+    stopSpinning();
+  } else {
+    buildSlotTrack();
+    startSpinning();
+    document.getElementById('btnWinner').disabled = false;
+  }
+}
+
+function addWinnerCard(w, num){
+  const list = document.getElementById('winnersList');
+  const card = document.createElement('div');
+  card.className = 'winner-card';
+  card.innerHTML = `<div class="winner-num">${num}</div>
+    <div class="winner-info">
+      <div class="wname">${escHtml(w.name)}</div>
+      <div class="wmeta">${escHtml(w.turno)} · ${escHtml(w.empresa)}</div>
+    </div>`;
+  list.appendChild(card);
+}
+
+// ── Confetti ──
+function launchConfetti(){
+  const canvas = document.getElementById('confettiCanvas');
+  const ctx = canvas.getContext('2d');
+  canvas.width = window.innerWidth;
+  canvas.height = window.innerHeight;
+  const pieces = [];
+  const colors = ['#e94560','#ffd93d','#ff6b6b','#0f3460','#16213e','#4ecdc4','#ff6b35'];
+
+  for(let i=0;i<120;i++){
+    pieces.push({
+      x: Math.random()*canvas.width,
+      y: -Math.random()*canvas.height,
+      w: Math.random()*10+5,
+      h: Math.random()*6+3,
+      color: colors[Math.floor(Math.random()*colors.length)],
+      vy: Math.random()*4+2,
+      vx: (Math.random()-0.5)*3,
+      rot: Math.random()*360,
+      vr: (Math.random()-0.5)*8
+    });
+  }
+
+  let frames = 0;
+  function draw(){
+    ctx.clearRect(0,0,canvas.width,canvas.height);
+    let alive = false;
+    pieces.forEach(p=>{
+      p.y += p.vy;
+      p.x += p.vx;
+      p.rot += p.vr;
+      p.vy += 0.05;
+      if(p.y < canvas.height + 20) alive = true;
+      ctx.save();
+      ctx.translate(p.x, p.y);
+      ctx.rotate(p.rot * Math.PI/180);
+      ctx.fillStyle = p.color;
+      ctx.globalAlpha = Math.max(0, 1 - p.y/canvas.height);
+      ctx.fillRect(-p.w/2,-p.h/2,p.w,p.h);
+      ctx.restore();
+    });
+    frames++;
+    if(alive && frames < 180) requestAnimationFrame(draw);
+    else ctx.clearRect(0,0,canvas.width,canvas.height);
+  }
+  draw();
+}
+
+// ── Reset ──
+function resetAll(){
+  stopSpinning();
+  winners = [];
+  remaining = [];
+  document.getElementById('winnersList').innerHTML = '<h3>Ganadores</h3>';
+  document.getElementById('btnWinner').style.display = '';
+  document.getElementById('btnWinner').disabled = true;
+  document.getElementById('btnNewRaffle').style.display = 'none';
+  document.getElementById('slotTrack').innerHTML = '';
+  showScreen('uploadScreen');
+}
+
+function escHtml(s){
+  const d=document.createElement('div');
+  d.textContent=s;return d.innerHTML;
+}
+</script>
+</body>
+</html>
