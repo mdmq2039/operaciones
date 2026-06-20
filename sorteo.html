@@ -366,7 +366,7 @@ document.getElementById('fileInput').addEventListener('change', function(e){
 
 function parseParticipants(rows){
   participants = [];
-  const colName = findCol(rows, ['nombres completos','nombre','name','nombres','nombre completo']);
+  const colName = findCol(rows, ['nombres completos','nombre completo','nombres','nombre','apellidos','name']);
   const colTurno = findCol(rows, ['turno','tuno','shift','horario']);
   const colEmpresa = findCol(rows, ['empresa','company','compañia','compania','service','services']);
 
