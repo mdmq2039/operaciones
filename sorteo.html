@@ -37,10 +37,12 @@ body{
 
 /* ── UPLOAD ── */
 .upload-zone{
+  display:block;
   border:2px dashed rgba(233,69,96,.5);border-radius:20px;
   padding:40px 30px;text-align:center;width:100%;max-width:380px;
   background:var(--card-bg);backdrop-filter:blur(10px);
   transition:all .3s;cursor:pointer;
+  -webkit-tap-highlight-color:transparent;
 }
 .upload-zone:active{border-color:var(--gold);background:rgba(233,69,96,.1)}
 .upload-icon{font-size:3rem;margin-bottom:12px}
@@ -256,12 +258,12 @@ body{
   <div class="company-name" id="companyTitle">Sorteo al Azar</div>
   <div class="event-title">Carga tu lista de participantes</div>
 
-  <div class="upload-zone" id="uploadZone" onclick="document.getElementById('fileInput').click()">
+  <label class="upload-zone" id="uploadZone" for="fileInput">
     <div class="upload-icon">📂</div>
-    <p>Toca para cargar archivo Excel</p>
+    <p>Toca para buscar archivo Excel</p>
     <small>.xlsx con columnas: Nombre, Turno, Empresa</small>
-  </div>
-  <input type="file" id="fileInput" accept=".xlsx,.xls">
+  </label>
+  <input type="file" id="fileInput" accept=".xlsx,.xls,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel,*/*">
 
   <div class="info-card" id="infoCard" style="display:none">
     <h3>Participantes cargados</h3>
@@ -385,8 +387,8 @@ function parseParticipants(rows){
   document.getElementById('participantCount').textContent = participants.length;
   document.getElementById('infoCard').style.display = 'block';
   document.getElementById('winnersCount').max = participants.length;
-  document.getElementById('uploadZone').innerHTML =
-    `<div class="upload-icon">✅</div><p>${participants.length} participantes cargados</p><small>Toca para cargar otro archivo</small>`;
+  const uz = document.getElementById('uploadZone');
+  uz.innerHTML = `<div class="upload-icon">✅</div><p>${participants.length} participantes cargados</p><small>Toca para cargar otro archivo</small>`;
 
   if(companyName){
     document.getElementById('companyTitle').textContent = companyName;
