@@ -18,6 +18,17 @@
 - [x] 13. Agregar pestaña `📱 Compartir` en `app.py` (WhatsApp wa.me links)
 - [x] 14. Merge a `main` y push para despliegue en Render
 
+## Plan: Sorteo al Azar (Raffle App)
+- [ ] 15. Crear archivo `sorteo.html` — aplicación web standalone con:
+  - Carga de archivo Excel (.xlsx) con columnas: Nombre, Turno, Empresa
+  - Selección de cantidad de ganadores
+  - Efecto visual de nombres girando en pantalla
+  - Conteo regresivo de 5 a 0
+  - Botón para revelar ganadores uno por uno
+  - Diseño profesional mobile-first (Android)
+  - Lista final de ganadores con nombre, turno y empresa
+- [ ] 16. Commit y push del sorteo
+
 ## Revisión
 
 ### Qué se hizo
