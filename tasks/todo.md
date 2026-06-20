@@ -27,7 +27,8 @@
   - Botón para revelar ganadores uno por uno
   - Diseño profesional mobile-first (Android)
   - Lista final de ganadores con nombre, turno y empresa
-- [ ] 16. Commit y push del sorteo
+- [x] 16. Commit y push del sorteo
+- [x] 17. Agregar música de fondo, efectos de sonido y botón Ausente al sorteo
 
 ## Revisión
 
