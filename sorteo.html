@@ -189,9 +189,19 @@ body{
   0%{opacity:0;transform:translateY(-20px)}
   100%{opacity:1;transform:translateY(0)}
 }
-.winner-close-btn{
-  margin-top:30px;opacity:0;animation:fadeDown .5s 1.1s forwards;
+.reveal-buttons{
+  display:flex;gap:12px;margin-top:30px;
+  opacity:0;animation:fadeDown .5s 1.1s forwards;
 }
+.reveal-buttons .winner-close-btn{
+  margin-top:0;opacity:1;animation:none;
+  padding:14px 24px;font-size:.95rem;
+}
+.btn-absent{
+  background:linear-gradient(135deg,#555,#777);
+  color:#fff;box-shadow:0 4px 20px rgba(100,100,100,.3);
+}
+.btn-absent:active{transform:scale(.96)}
 
 /* confetti canvas */
 #confettiCanvas{
@@ -323,7 +333,10 @@ body{
   <div class="winner-details" id="revealDetails">
     <span>Turno</span><span>Empresa</span>
   </div>
-  <button class="btn btn-primary winner-close-btn" onclick="closeReveal()">Continuar</button>
+  <div class="reveal-buttons">
+    <button class="btn btn-primary winner-close-btn" onclick="closeReveal(false)">✅ Presente</button>
+    <button class="btn btn-absent winner-close-btn" onclick="closeReveal(true)">❌ Ausente</button>
+  </div>
 </div>
 
 <script>
@@ -334,6 +347,103 @@ let totalWinners = 1;
 let spinning = false;
 let spinInterval = null;
 let companyName = '';
+
+// ── Web Audio API (music & sounds) ──
+let audioCtx = null;
+let bgMusicTimer = null;
+let bgGain = null;
+
+function initAudio(){
+  if(audioCtx) return;
+  audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+}
+
+function playNote(freq, startTime, duration, type, vol){
+  if(!audioCtx) return;
+  var osc = audioCtx.createOscillator();
+  var g = audioCtx.createGain();
+  osc.type = type || 'square';
+  osc.frequency.value = freq;
+  g.gain.setValueAtTime(vol || 0.08, startTime);
+  g.gain.exponentialRampToValueAtTime(0.001, startTime + duration);
+  osc.connect(g);
+  g.connect(audioCtx.destination);
+  osc.start(startTime);
+  osc.stop(startTime + duration);
+}
+
+function playBackgroundMusic(){
+  if(!audioCtx) return;
+  stopBackgroundMusic();
+  bgGain = audioCtx.createGain();
+  bgGain.gain.value = 0.06;
+  bgGain.connect(audioCtx.destination);
+
+  var melody = [392,440,494,523,494,440,392,330, 349,392,440,494,440,392,349,330];
+  var noteIdx = 0;
+  var bpm = 200;
+  var interval = 60000 / bpm;
+
+  function tick(){
+    if(!audioCtx || !bgGain) return;
+    var t = audioCtx.currentTime;
+    var freq = melody[noteIdx % melody.length];
+    var osc = audioCtx.createOscillator();
+    var g = audioCtx.createGain();
+    osc.type = 'square';
+    osc.frequency.value = freq;
+    g.gain.setValueAtTime(0.05, t);
+    g.gain.exponentialRampToValueAtTime(0.001, t + 0.15);
+    osc.connect(g);
+    g.connect(bgGain);
+    osc.start(t);
+    osc.stop(t + 0.2);
+
+    var bassFreq = freq / 2;
+    var osc2 = audioCtx.createOscillator();
+    var g2 = audioCtx.createGain();
+    osc2.type = 'triangle';
+    osc2.frequency.value = bassFreq;
+    g2.gain.setValueAtTime(0.03, t);
+    g2.gain.exponentialRampToValueAtTime(0.001, t + 0.1);
+    osc2.connect(g2);
+    g2.connect(bgGain);
+    osc2.start(t);
+    osc2.stop(t + 0.15);
+
+    noteIdx++;
+    bgMusicTimer = setTimeout(tick, interval);
+  }
+  tick();
+}
+
+function stopBackgroundMusic(){
+  if(bgMusicTimer){ clearTimeout(bgMusicTimer); bgMusicTimer = null; }
+  bgGain = null;
+}
+
+function playCountdownBeep(num){
+  if(!audioCtx) return;
+  var t = audioCtx.currentTime;
+  var freq = num > 0 ? 600 : 900;
+  var dur = num > 0 ? 0.15 : 0.4;
+  playNote(freq, t, dur, 'sine', 0.15);
+  if(num <= 0){
+    playNote(1200, t + 0.1, 0.3, 'sine', 0.12);
+  }
+}
+
+function playWinnerFanfare(){
+  if(!audioCtx) return;
+  var t = audioCtx.currentTime;
+  var notes = [523,659,784,1047];
+  for(var i=0;i<notes.length;i++){
+    playNote(notes[i], t + i*0.12, 0.4, 'sine', 0.12);
+    playNote(notes[i]*0.5, t + i*0.12, 0.3, 'triangle', 0.06);
+  }
+  playNote(1047, t + 0.5, 0.8, 'sine', 0.1);
+  playNote(784, t + 0.5, 0.8, 'triangle', 0.05);
+}
 
 // ── Particles background ──
 (function(){
@@ -444,6 +554,7 @@ function startRaffle(){
   winners = [];
   remaining = [...participants];
 
+  initAudio();
   showScreen('raffleScreen');
   if(companyName){
     document.getElementById('raffleCompany').textContent = companyName;
@@ -453,6 +564,7 @@ function startRaffle(){
   runCountdown(function(){
     buildSlotTrack();
     startSpinning();
+    playBackgroundMusic();
     document.getElementById('btnWinner').disabled = false;
   });
 }
@@ -478,6 +590,7 @@ function runCountdown(callback){
   numEl.style.animation = 'none';
   void numEl.offsetWidth;
   numEl.style.animation = 'countPulse .5s ease-out';
+  playCountdownBeep(count);
 
   const iv = setInterval(()=>{
     count--;
@@ -487,6 +600,7 @@ function runCountdown(callback){
       numEl.style.animation = 'none';
       void numEl.offsetWidth;
       numEl.style.animation = 'countPulse .5s ease-out';
+      playCountdownBeep(0);
       setTimeout(()=>{
         overlay.classList.remove('active');
         callback();
@@ -497,6 +611,7 @@ function runCountdown(callback){
     numEl.style.animation = 'none';
     void numEl.offsetWidth;
     numEl.style.animation = 'countPulse .5s ease-out';
+    playCountdownBeep(count);
   }, 1000);
 }
 
@@ -604,6 +719,9 @@ function slowDown(winner, callback){
 }
 
 function showWinnerOverlay(winner){
+  stopBackgroundMusic();
+  playWinnerFanfare();
+
   const overlay = document.getElementById('winnerReveal');
   document.getElementById('revealBadge').textContent = `🏆 Ganador #${winners.length}`;
   document.getElementById('revealName').textContent = winner.name;
@@ -616,27 +734,48 @@ function showWinnerOverlay(winner){
   document.getElementById('revealBadge').style.animation='none';
   document.getElementById('revealName').style.animation='none';
   document.getElementById('revealDetails').style.animation='none';
+  var btnsDiv = overlay.querySelector('.reveal-buttons');
+  if(btnsDiv){ btnsDiv.style.animation='none'; void btnsDiv.offsetWidth; }
   void overlay.offsetWidth;
   document.getElementById('revealBadge').style.animation='fadeDown .5s .2s forwards';
   document.getElementById('revealName').style.animation='fadeDown .5s .5s forwards';
   document.getElementById('revealDetails').style.animation='fadeDown .5s .8s forwards';
+  if(btnsDiv) btnsDiv.style.animation='fadeDown .5s 1.1s forwards';
 
   overlay.classList.add('active');
   launchConfetti();
 }
 
-function closeReveal(){
+function closeReveal(isAbsent){
   document.getElementById('winnerReveal').classList.remove('active');
+
+  if(isAbsent){
+    winners.pop();
+    if(remaining.length === 0){
+      alert('No quedan más participantes disponibles.');
+      document.getElementById('btnWinner').style.display = 'none';
+      document.getElementById('btnNewRaffle').style.display = 'block';
+      stopBackgroundMusic();
+      return;
+    }
+    buildSlotTrack();
+    startSpinning();
+    playBackgroundMusic();
+    document.getElementById('btnWinner').disabled = false;
+    return;
+  }
+
   addWinnerCard(winners[winners.length - 1], winners.length);
   updateProgress();
 
   if(winners.length >= totalWinners){
     document.getElementById('btnWinner').style.display = 'none';
     document.getElementById('btnNewRaffle').style.display = 'block';
-    stopSpinning();
+    stopBackgroundMusic();
   } else {
     buildSlotTrack();
     startSpinning();
+    playBackgroundMusic();
     document.getElementById('btnWinner').disabled = false;
   }
 }
@@ -704,6 +843,7 @@ function launchConfetti(){
 // ── Reset ──
 function resetAll(){
   stopSpinning();
+  stopBackgroundMusic();
   winners = [];
   remaining = [];
   document.getElementById('winnersList').innerHTML = '<h3>Ganadores</h3>';
