@@ -350,40 +350,70 @@ let companyName = '';
 })();
 
 // ── File input ──
+var NAME_ALIASES = ['nombres completos','nombre completo','nombres','nombre','apellidos','name'];
+var TURNO_ALIASES = ['turno','tuno','shift','horario'];
+var EMPRESA_ALIASES = ['empresa','company','compania','service','services'];
+
 document.getElementById('fileInput').addEventListener('change', function(e){
-  const file = e.target.files[0];
+  var file = e.target.files[0];
   if(!file) return;
-  const reader = new FileReader();
+  var reader = new FileReader();
   reader.onload = function(ev){
-    const data = new Uint8Array(ev.target.result);
-    const wb = XLSX.read(data, {type:'array'});
-    const ws = wb.Sheets[wb.SheetNames[0]];
-    const json = XLSX.utils.sheet_to_json(ws, {defval:''});
-    parseParticipants(json);
+    var data = new Uint8Array(ev.target.result);
+    var wb = XLSX.read(data, {type:'array'});
+    var ws = wb.Sheets[wb.SheetNames[0]];
+    var allRows = XLSX.utils.sheet_to_json(ws, {header:1, defval:''});
+    parseExcel(allRows);
   };
   reader.readAsArrayBuffer(file);
 });
 
-function parseParticipants(rows){
-  participants = [];
-  const colName = findCol(rows, ['nombres completos','nombre completo','nombres','nombre','apellidos','name']);
-  const colTurno = findCol(rows, ['turno','tuno','shift','horario']);
-  const colEmpresa = findCol(rows, ['empresa','company','compañia','compania','service','services']);
+function matchAlias(val, aliases){
+  if(!val) return false;
+  var v = String(val).toLowerCase().trim();
+  for(var i=0;i<aliases.length;i++){
+    if(v === aliases[i] || v.indexOf(aliases[i]) !== -1) return true;
+  }
+  return false;
+}
 
-  if(!colName){
-    alert('No se encontró la columna de nombres en el Excel.\nAsegúrate de tener una columna llamada "Nombres completos" o "Nombre".');
+function parseExcel(allRows){
+  participants = [];
+  var headerRow = -1;
+  var colN = -1, colT = -1, colE = -1;
+
+  for(var r=0; r<Math.min(allRows.length, 15); r++){
+    var row = allRows[r];
+    for(var c=0; c<row.length; c++){
+      var val = String(row[c] || '').toLowerCase().trim();
+      if(matchAlias(val, NAME_ALIASES) && colN === -1){
+        colN = c; headerRow = r;
+      }
+      if(matchAlias(val, TURNO_ALIASES) && colT === -1){
+        colT = c;
+      }
+      if(matchAlias(val, EMPRESA_ALIASES) && colE === -1){
+        colE = c;
+      }
+    }
+    if(colN !== -1) break;
+  }
+
+  if(colN === -1){
+    alert('No se encontro la columna de nombres.\nColumnas validas: Nombre, Apellidos, Nombres completos');
     return;
   }
 
-  rows.forEach(r => {
-    const name = String(r[colName] || '').trim();
-    if(!name) return;
+  for(var r = headerRow + 1; r < allRows.length; r++){
+    var row = allRows[r];
+    var name = String(row[colN] || '').trim();
+    if(!name) continue;
     participants.push({
       name: name,
-      turno: String(r[colTurno] || '').trim(),
-      empresa: String(r[colEmpresa] || '').trim()
+      turno: colT !== -1 ? String(row[colT] || '').trim() : '',
+      empresa: colE !== -1 ? String(row[colE] || '').trim() : ''
     });
-  });
+  }
 
   if(participants.length > 0 && participants[0].empresa){
     companyName = participants[0].empresa;
@@ -392,31 +422,15 @@ function parseParticipants(rows){
   document.getElementById('participantCount').textContent = participants.length;
   document.getElementById('infoCard').style.display = 'block';
   document.getElementById('winnersCount').max = participants.length;
-  const uz = document.getElementById('uploadZone');
-  const fi = document.getElementById('fileInput');
+  var uz = document.getElementById('uploadZone');
+  var fi = document.getElementById('fileInput');
   uz.innerHTML = '';
   uz.appendChild(fi);
-  uz.insertAdjacentHTML('beforeend', `<div class="upload-icon">✅</div><p>${participants.length} participantes cargados</p><small>Toca para cargar otro archivo</small>`);
+  uz.insertAdjacentHTML('beforeend', '<div class="upload-icon">✅</div><p>'+participants.length+' participantes cargados</p><small>Toca para cargar otro archivo</small>');
 
   if(companyName){
     document.getElementById('companyTitle').textContent = companyName;
   }
-}
-
-function findCol(rows, aliases){
-  if(!rows.length) return null;
-  const keys = Object.keys(rows[0]);
-  for(const alias of aliases){
-    for(const k of keys){
-      if(k.toLowerCase().trim() === alias) return k;
-    }
-  }
-  for(const alias of aliases){
-    for(const k of keys){
-      if(k.toLowerCase().trim().includes(alias)) return k;
-    }
-  }
-  return null;
 }
 
 // ── Start raffle ──
