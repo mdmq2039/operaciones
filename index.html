@@ -352,7 +352,7 @@ document.getElementById('fileInput').addEventListener('change', function(e){
 
 function parseParticipants(rows){
   participants = [];
-  var colName = findCol(rows, ['nombres completos','nombre','name','nombres','nombre completo']);
+  var colName = findCol(rows, ['nombres completos','nombre completo','nombres','nombre','apellidos','name']);
   var colTurno = findCol(rows, ['turno','tuno','shift','horario']);
   var colEmpresa = findCol(rows, ['empresa','company','compania','service','services']);
 
