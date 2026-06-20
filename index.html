@@ -336,6 +336,10 @@ var companyName = '';
   }
 })();
 
+var NAME_ALIASES = ['nombres completos','nombre completo','nombres','nombre','apellidos','name'];
+var TURNO_ALIASES = ['turno','tuno','shift','horario'];
+var EMPRESA_ALIASES = ['empresa','company','compania','service','services'];
+
 document.getElementById('fileInput').addEventListener('change', function(e){
   var file = e.target.files[0];
   if(!file) return;
@@ -344,31 +348,56 @@ document.getElementById('fileInput').addEventListener('change', function(e){
     var data = new Uint8Array(ev.target.result);
     var wb = XLSX.read(data, {type:'array'});
     var ws = wb.Sheets[wb.SheetNames[0]];
-    var json = XLSX.utils.sheet_to_json(ws, {defval:''});
-    parseParticipants(json);
+    var allRows = XLSX.utils.sheet_to_json(ws, {header:1, defval:''});
+    parseExcel(allRows);
   };
   reader.readAsArrayBuffer(file);
 });
 
-function parseParticipants(rows){
-  participants = [];
-  var colName = findCol(rows, ['nombres completos','nombre completo','nombres','nombre','apellidos','name']);
-  var colTurno = findCol(rows, ['turno','tuno','shift','horario']);
-  var colEmpresa = findCol(rows, ['empresa','company','compania','service','services']);
+function matchAlias(val, aliases){
+  if(!val) return false;
+  var v = String(val).toLowerCase().trim();
+  for(var i=0;i<aliases.length;i++){
+    if(v === aliases[i] || v.indexOf(aliases[i]) !== -1) return true;
+  }
+  return false;
+}
 
-  if(!colName){
-    alert('No se encontro la columna de nombres en el Excel.');
+function parseExcel(allRows){
+  participants = [];
+  var headerRow = -1;
+  var colN = -1, colT = -1, colE = -1;
+
+  for(var r=0; r<Math.min(allRows.length, 15); r++){
+    var row = allRows[r];
+    for(var c=0; c<row.length; c++){
+      var val = String(row[c] || '').toLowerCase().trim();
+      if(matchAlias(val, NAME_ALIASES) && colN === -1){
+        colN = c; headerRow = r;
+      }
+      if(matchAlias(val, TURNO_ALIASES) && colT === -1){
+        colT = c;
+      }
+      if(matchAlias(val, EMPRESA_ALIASES) && colE === -1){
+        colE = c;
+      }
+    }
+    if(colN !== -1) break;
+  }
+
+  if(colN === -1){
+    alert('No se encontro la columna de nombres.\nColumnas validas: Nombre, Apellidos, Nombres completos');
     return;
   }
 
-  for(var i=0;i<rows.length;i++){
-    var r=rows[i];
-    var name = String(r[colName] || '').trim();
+  for(var r = headerRow + 1; r < allRows.length; r++){
+    var row = allRows[r];
+    var name = String(row[colN] || '').trim();
     if(!name) continue;
     participants.push({
       name: name,
-      turno: String(r[colTurno] || '').trim(),
-      empresa: String(r[colEmpresa] || '').trim()
+      turno: colT !== -1 ? String(row[colT] || '').trim() : '',
+      empresa: colE !== -1 ? String(row[colE] || '').trim() : ''
     });
   }
 
@@ -388,22 +417,6 @@ function parseParticipants(rows){
   if(companyName){
     document.getElementById('companyTitle').textContent = companyName;
   }
-}
-
-function findCol(rows, aliases){
-  if(!rows.length) return null;
-  var keys = Object.keys(rows[0]);
-  for(var a=0;a<aliases.length;a++){
-    for(var k=0;k<keys.length;k++){
-      if(keys[k].toLowerCase().trim() === aliases[a]) return keys[k];
-    }
-  }
-  for(var a=0;a<aliases.length;a++){
-    for(var k=0;k<keys.length;k++){
-      if(keys[k].toLowerCase().trim().indexOf(aliases[a])!==-1) return keys[k];
-    }
-  }
-  return null;
 }
 
 function startRaffle(){
